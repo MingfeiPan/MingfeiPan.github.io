@@ -1,0 +1,100 @@
+---
+layout: page
+title: "About"
+description: "Hey, this is pmf."
+header-img: "img/about-bg.jpg"
+---
+
+<!-- Chinese Version -->
+<div class="en post-container">
+    <blockquote>
+        写写代码,打打dota,看看sp
+    </blockquote>
+    I wanna hold 'em like they do in Texas Plays<br>
+    A little gamblin' is fun when you're with me (I love it)<br>
+    Russian Roulette is not the same without a gun<br>
+    And baby when it's love, if it's not rough it isn't fun<br>
+    <br>
+    Oh o-oh oh oh, o-o-o-o-o-oh<br>
+    I'll get him hot, show him what I've got(2x)<br>
+    <br>
+    Can't read my, can't read my<br>
+    No, he can't read my poker face<br>
+    (She's got to love nobody)(2x)<br>
+    <br>
+    P-p-p-poker face, p-p-poker face<br>
+    (mum-mum-mum-mah)(2x)<br>
+    <br>
+    I wanna roll with him, a hard pair we will be<br>
+    I don't give a crap about whales, so go and hug a tree (I love it)<br>
+    Russian Roulette is not the same without a gun<br>
+    And baby when it's love, if it's not rough it isn't fun<br>
+    <br>
+    <p style="text-align:right;">
+        ——Eric Cartman
+    </p>
+
+</div>
+
+
+{% if site.duoshuo_username %}
+<!-- 多说评论框 start -->
+<div class="comment">
+    <div class="ds-thread"
+    {% if site.duoshuo_username == "pmfblog" %}
+        data-thread-id="1187623191091085319"
+    {% else %}
+        data-thread-key="{{site.duoshuo_username}}/about"
+    {% endif %}
+
+    data-title="{{page.title}}"
+    data-url="{{site.url}}/about/"></div>
+</div>
+<!-- 多说评论框 end -->
+
+<!-- Duoshuo hacking -->
+<input id="dsUser" type="hidden" value="{{site.duoshuo_username}}"  />
+
+<!-- 多说公共JS代码 start (一个网页只需插入一次) -->
+<script type="text/javascript">
+    // dynamic User hacking by pmf
+    var _user = document.getElementById('dsUser').value;
+    // duoshuo comment query.
+    var duoshuoQuery = {short_name: _user };
+    (function() {
+        var ds = document.createElement('script');
+        ds.type = 'text/javascript';ds.async = true;
+        ds.src = (document.location.protocol == 'https:' ? 'https:' : 'http:') + '//static.duoshuo.com/embed.js';
+        ds.charset = 'UTF-8';
+        (document.getElementsByTagName('head')[0]
+         || document.getElementsByTagName('body')[0]).appendChild(ds);
+    })();
+</script>
+<!-- 多说公共JS代码 end -->
+{% endif %}
+
+
+{% if site.disqus_username %}
+<!-- disqus 评论框 start -->
+<div class="comment">
+    <div id="disqus_thread" class="disqus-thread">
+
+    </div>
+</div>
+<!-- disqus 评论框 end -->
+
+<!-- disqus 公共JS代码 start (一个网页只需插入一次) -->
+<script type="text/javascript">
+    /* * * CONFIGURATION VARIABLES * * */
+    var disqus_shortname = "{{site.disqus_username}}";
+    var disqus_identifier = "{{site.disqus_username}}/{{page.url}}";
+    var disqus_url = "{{site.url}}{{page.url}}";
+
+    (function() {
+        var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+        dsq.src = '//' + disqus_shortname + '.disqus.com/embed.js';
+        (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    })();
+</script>
+<!-- disqus 公共JS代码 end -->
+{% endif %}

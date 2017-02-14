@@ -1,0 +1,126 @@
+---
+layout: post
+title: Your daily dosh of linux(1)
+category: linux
+tag : linux
+---
+<img src="/img/in-post/linux.jpg">
+
+### ls
+例一: `ls -alh /home`  
+*列出/home 文件夹下的所有文件和目录的详细资料*  
+
+
+例二: `ls -l t*`  
+*列出当前目录中所有以“t”开头的目录的详细内容*  
+
+
+例三: `ls -F /home |grep /$`  
+*列出 /home 文件下面的子目录*  
+
+例四: `ls -l /home | grep "^d"`  
+*列出 /home 文件下面的子目录详细情况*  
+
+还有一些详细用例,请参考 [linux ls](http://www.cnblogs.com/peida/archive/2012/10/23/2734829.html). 
+
+
+###cd, pwd 略
+
+###mkdir
+>-m, --mode=模式，设定权限<模式> (类似 chmod)  
+>-p, --parents  可以是一个路径名称。此时若路径中的某些目录尚不存在,加上此选项后,系统将自动建立好那些尚不存在的目录,即一次可以建立多个目录;  
+>-v, --verbose  每次创建新目录都显示信息
+
+
+例一: `mkdir -p test1/test2`  
+*递归创建多个目录*  
+
+例二: `mkdir -vp scf/{lib/,bin/,doc/{info,product},logs/{info,product},service/deploy/{info,product}}`  
+*完整创建项目所用文件夹*  
+
+###rm mkdir mv cp touch略
+
+###cat
+>-b, --number-nonblank    对非空输出行编号  
+>-n, --number     对输出的所有行编号,由1开始对所有输出的行数编号
+
+例一: cat > test.txt  
+*创建文件*  
+
+
+例二: cat -n log.txt > test.txt  
+*把log.txt 的文件内容加上行号后输入test.txt 这个文件中* 
+
+###nl
+不常用,类似cat -n  
+例一:  nl -b a -n rz gdbtest.c  
+*让行号前面自动补上0,统一输出格式*   
+
+###more
+参数:  
+>+n      从笫n行开始显示  
+>-n       定义屏幕大小为n行  
+>-s       把连续的多个空行显示为一行  
+>+/pattern 在每个档案显示前搜寻该字串（pattern），然后从该字符串前两行之后开始显示  
+
+常用操作:  
+>Enter    向下n行，需要定义。默认为1行  
+>空格键  向下滚动一屏  
+>Ctrl+B  返回上一屏  
+>=       输出当前行的行号  
+>:f     输出文件名和当前行的行号  
+>V      调用vi编辑器  
+>!命令   调用Shell，并执行命令   
+>q       退出more  
+
+例一: more +3 test.log  
+*显示文件中从第3行起的内容*  
+
+例二: more +/day test.log  
+*从文件中查找第一个出现"day"字符串的行，并从该处开始显示输出*  
+
+###less
+参数:  
+>-b <缓冲区大小> 设置缓冲区的大小  
+>-e  当文件显示结束后，自动离开  
+>-f  强迫打开特殊文件，例如外围设备代号、目录和二进制文件  
+> -i  忽略搜索时的大小写  
+> -m  显示类似more命令的百分比  
+> -N  显示每行的行号	
+> -o <文件名> 将less 输出的内容在指定文件中保存起来  
+> -s  显示连续空行为一行  	  
+> /字符串：向下搜索“字符串”的功能  
+> ?字符串：向上搜索“字符串”的功能  
+> n：重复前一个搜索（与 / 或 ? 有关）	  
+> N：反向重复前一个搜索（与 / 或 ? 有关）  
+> b  向后翻一页  
+> d  向后翻半页  
+> 空格键 滚动一行  
+> 回车键 滚动一页  
+
+例一: ps -ef |less  
+*ps查看进程信息并通过less分页显示*  
+
+例二: history | less	
+*查看命令历史使用记录并通过less分页显示*	
+
+例三: less test.log test1.log	
+*less浏览多个文件*  
+ 
+详细用例参考 [linux less](http://www.cnblogs.com/peida/archive/2012/11/05/2754477.html)  
+
+###head 忽略
+
+###tail
+参数:  
+>-f 循环读取  
+>-v 显示详细的处理信息		
+>-n 显示行数	
+
+例一: tail -f test.log	
+*循环查看文件内容*  
+
+
+
+
+

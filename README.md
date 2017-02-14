@@ -1,2 +1,1 @@
-# MingfeiPan.github.io
-personal blog
+personal site
