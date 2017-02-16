@@ -1,0 +1,50 @@
+---
+layout:post
+title: Your daily dosh of linux(2)
+category: linux
+tag : linux
+---
+<img src="/img/in-post/linux.jpg">
+
+`接上一篇,其实这些linux的东西写出来是想给我自己做个提醒的,有不熟的就记着以后看.所以多多少少会有缺的,请见谅`  
+
+###find  
+>find是必须熟练的linux命令  
+命令格式:  
+
+>find pathname -options [-print -exec -ok ...]   
+命令参数:  
+
+>pathname *find 所需要查找的路径, /为root*  
+>print *将输出内容打印到标准输出*  
+>exec *对输出可执行的shell命令 格式为'command' {  } ;*  
+>ok *等同于exec,会询问执行*  
+
+选项:  
+>-name 按照文件名查找  
+>-mtime n 按照文件的更改时间来查找文件， - n表示文件更改时间距现在n天以内，+ n表示文件更改时间距现在n天以前  
+>-atime n 查找系统中最后n\*24小时访问的文件  
+>-type  查找某一类型的文件  
+`比如b - 块设备文件,d - 目录,c - 字符设备文件,p - 管道文件,l - 符号链接文件,f - 普通文件`  
+>-mount：在查找文件时不跨越文件系统mount点  
+>-follow：如果find命令遇到符号链接文件，就跟踪至链接所指向的文件  
+
+例一:查找指定时间内修改过的文件  
+*find / mtime 2*  
+
+例二:根据关键字查找,将找出当前.路径下所有.log文件  
+*find . -name "\*.log"*  
+
+例三:按照目录或文件的权限来查找文件  
+*find / -perm 777*  
+
+例四:按类型查找  
+*find . -type f -name "\*.log"*  
+
+例五:查找当前所有目录并排序  
+*find . -type d | sort*  
+
+  
+
+
+ 
