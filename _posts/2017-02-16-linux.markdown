@@ -1,14 +1,15 @@
 ---
-layout:post
+layout: post
 title: Your daily dosh of linux(2)
 category: linux
 tag : linux
 ---
 <img src="/img/in-post/linux.jpg">
 
+
 `接上一篇,其实这些linux的东西写出来是想给我自己做个提醒的,有不熟的就记着以后看.所以多多少少会有缺的,请见谅`  
 
-###find  
+### find  
 >find是必须熟练的linux命令  
 命令格式:  
 
