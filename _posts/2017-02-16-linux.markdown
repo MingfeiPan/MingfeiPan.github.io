@@ -45,7 +45,30 @@ tag : linux
 例五:查找当前所有目录并排序  
 *find . -type d | sort*  
 
-  
+
+### find&exec  
+>exec 参数可以跟随命令, 以 ; 终止 考虑到各个系统中分号会有不同的意义,所以前面加反斜杠  {}花括号代表前面find查找出来的文件名  
+
+例一: ls -l与find exec  
+*find . -type f -exec ls -l {} \;*  
+
+例二: find exec与rm   
+*find . -type f -mtime +n -exec rm {} \;*  
+>在shell中用任何方式删除文件之前,当使用诸如mv或rm命令时,可以使用-exec选项的安全模式应当先查看相应的文件,它将在对每个匹配到的文件进行操作之前提示你  
+
+例三:find exec与rm safe mode  
+*find . -name "\*.log" -mtime +n -ok rm {} \;*  
+
+例四: find exec与grep  
+*find /etc -name "passwd\*" -exec grep "root" {} \;*  
+
+例五: find exec与mv  
+*find . -name "\*.log" -exec mv {} /home \;*   
+
+例六: find exec与cp  
+*find . -name "\*.log" -exec cp {} test \;*  
+
+
 
 
  
