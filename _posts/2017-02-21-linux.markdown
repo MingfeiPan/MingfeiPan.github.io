@@ -1,0 +1,77 @@
+---
+layout: post
+title: Your daily dosh of linux(3)
+category: linux
+tag : linux
+---
+<img src="/img/in-post/linux.jpg">
+
+`在使用 find 命令的-exec选项处理匹配到的文件时, find命令将所有匹配到的文件一起传递给exec执行 但有些系统对能够传递给exec的命令长度有限制,这样在find命令运行几分钟之后,就会出现溢出错误 错误信息通常是“参数列太长”或“参数列溢出” 这就是xargs命令的用处所在,特别是与find命令一起使用`  
+
+####可以先学习一下xargs  
+之所以能用到这个命令，关键是由于很多命令不支持|管道来传递参数，而日常工作中有有这个必要，所以就有了xargs命令  
+
+例:  
+find /sbin -perm +700 | ls -l  
+>这样使用管道命令会报错  
+
+find /sbin -perm +700 |xargs ls -l   
+>正确用法  
+
+xargs 可以读入 stdin 的资料,并且以空白字元或断行字元作为分辨,将 stdin 的资料分隔成为 arguments  
+
+参数:  
+>-0 当sdtin含有特殊字元时候,将其当成一般字符  
+>-a file 从文件中读入作为sdtin  
+>-e flag flag必须是一个以空格分隔的标志,当xargs分析到含有flag这个标志的时候就停止  
+>-n num 后面加次数,表示命令在执行的时候一次用的argument的个数,默认是用所有的  
+>-t 表示先打印命令,然后再执行  
+>...  
+
+
+
+####这里顺便可以提到管道命令与xargs的区别  
+
+*管道是实现“将前面的标准输出作为后面的标准输入”*  
+*xargs是实现“将标准输入作为命令的参数”*  
+
+例:  
+echo "--help"|cat 将输出:  
+>--help  
+
+echo "--help"|xargs cat 将输出:  
+>cat: illegal option -- -
+usage: cat [-benstuv] [file ...]  
+
+管道符 | 所传递给程序的不是你简单地在程序名后面输入的参数，它们会被程序内部的读取功能如scanf和gets等接收,而xargs则是将内容作为普通的参数传递给程序,相当于你手写了 cat --help  
+再举个例子 管道是把一个命令的输出传递给另一个命令作为输入,比如 command1 | command2但是command2仅仅把输出的内容作为输入参数 find . -name "install.log" -print打印出的是install.log这个字符串,如果仅仅使用管道,那么command2能够使用的仅仅是install.log这个字符串,不能把它当作文件来进行处理
+
+find . -name "install.log" -print | cat 将输出:  
+>./install.log   
+
+$find . -name "install.log" -print | xargs cat 将输出:  
+>aaaaa 也就是log内的内容  
+
+
+####回到find使用xargs  
+
+例一:查找系统中的每一个普通文件,然后使用xargs命令来测试它们分别属于哪类文件  
+*find . -type f -print | xargs file*  
+
+例二:查找当前文件夹下.py文件并写入ret.txt中  
+*find . -name "\*.py" | xargs echo "" >./ret.txt*  
+
+例三:在当前目录下查找所有用户具有读 写和执行权限的文件,并收回相应的写权限  
+*find . -perm -7 -print | xargs chmod 555*  
+
+例四:用grep命令在所有的普通文件中搜索bin这个词  
+*find . -type f -print | xargs grep "bin"*  
+
+例五:用grep命令在当前目录下的所有普通文件中搜索bin这个词  
+*find . -name \\\* -type f -print | xargs grep "bin"*
+
+`注意,\用来取消find命令中的*在shell中的特殊含义`  
+
+
+还有一些详细用例,请参考 [linux find](http://www.cnblogs.com/peida/archive/2012/11/16/2773289.html). 
+
