@@ -53,7 +53,7 @@ $find . -name "install.log" -print | xargs cat 将输出:
 >aaaaa 也就是log内的内容  
 
 
-####回到find使用xargs  
+### 回到find使用xargs  
 
 例一:查找系统中的每一个普通文件,然后使用xargs命令来测试它们分别属于哪类文件  
 *find . -type f -print | xargs file*  
