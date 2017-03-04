@@ -1,6 +1,6 @@
 ---
 layout: post
-title: Your daily dosh of linux(3)
+title: Your daily dose of linux(3)
 category: linux
 tag : linux
 ---
