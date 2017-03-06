@@ -41,7 +41,8 @@ Linux文件类型常见的有 普通文件、目录文件、字符设备文件�
 >套接字文件, 这种类型的文件通常被用在网络上的数据承接 我们可以启动一个程序来监听客户端的要求， 而客户端就可以透过这个socket来进行数据的沟通 第一个属性为 [ s ]  
 
 符号链接文件:  
->lrwxrwxrwx,注意第一个字符是l，这类文件是链接文件 例如   `lrwxrwxrwx.  1 root root   27 3月   9 2016 libfdfsclient.so -> /usr/lib64/libfdfsclient.so`
+>lrwxrwxrwx,注意第一个字符是l，这类文件是链接文件 例如  
+> `lrwxrwxrwx.  1 root root   27 3月   9 2016 libfdfsclient.so -> /usr/lib64/libfdfsclient.so`
 >是通过ln -s 源文件名 新文件名  
 
 数据输送文件（FIFO,pipe）:  
