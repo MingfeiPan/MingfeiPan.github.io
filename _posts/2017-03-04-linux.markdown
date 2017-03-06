@@ -42,7 +42,7 @@ Linux文件类型常见的有 普通文件、目录文件、字符设备文件�
 
 符号链接文件:  
 >lrwxrwxrwx,注意第一个字符是l，这类文件是链接文件 例如  
-> `lrwxrwxrwx.  1 root root   27 3月   9 2016 libfdfsclient.so -> /usr/lib64/libfdfsclient.so`
+> `lrwxrwxrwx.  1 root root   27 3月   9 2016 libfdfsclient.so -> /usr/lib64/libfdfsclient.so`  
 >是通过ln -s 源文件名 新文件名  
 
 数据输送文件（FIFO,pipe）:  
