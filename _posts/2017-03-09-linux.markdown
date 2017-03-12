@@ -1,0 +1,103 @@
+---
+layout: post
+title: Your daily dose of linux(7)
+category: linux
+tag : linux
+---
+<img src="/img/in-post/linux.jpg">
+
+### chmod  
+
+chmod命令用于改变linux系统文件或目录的访问权限 ,rwx几种权限  
+
+命令格式:  
+>chmod [-cfvR] [--help] [--version] mode file  
+
+命令参数:  
+> -c 当发生改变时，报告处理信息  
+> -f 错误信息不输出  
+> -R 处理指定目录以及其子目录下的所有文件  
+> -v 运行时显示详细处理信息  
+
+`权限范围可以用文字或数字设定, 这里说数字设定法`  
+
+例: 给file.txt的属主分配读、写、执行(7)的权限，给file的所在组分配读、执行(5)的权限，给其他用户分配执行(1)的权限  
+*chmod 751 file*  
+>三个数字位置分别为 属主|属主同组用户|其他用户  
+
+
+### tar  
+
+tar命令可以为linux的文件和目录创建档案,这里要有个跟windows不太一样说法, 其实我之前也没注意  
+`打包和压缩 打包是指将一大堆文件或目录变成一个总的文件 压缩则是将一个大的文件通过一些压缩算法变成一个小文件 tar是一个打包命令, gzip是一个压缩命令`  
+
+命令格式:
+>tar[必要参数][选择参数][文件]  
+
+命令参数:
+>-c 建立新的压缩文件  
+>-r 添加文件到已经压缩的文件  
+>-x 从压缩的文件中提取文件  
+>-t 显示压缩文件的内容  
+>-z 支持gzip解压文件  
+>-j 支持bzip2解压文件  
+>-Z 支持compress解压文件  
+>-v 显示操作过程  
+>-f 指定压缩文件  
+
+常见压缩解压命令:
+`tar`  
+>解包 tar xvf test.tar  
+>打包：tar cvf test.tar /dir  
+
+.tar.gz与.tgz
+>解压：tar zxvf test.tar.gz  
+>压缩：tar zcvf test.tar.gz /dir  
+
+例:  
+>tar -cvf log.tar log.log *仅打包，不压缩*  
+>tar -zcvf log.tar.gz log.log *打包并压缩*  
+>tar -zxvf log.tar.gz *将tar包解压缩*  
+
+### chgrp  
+使用chgrp指令取变更文件与目录所属群组 要被改变的组名必须要在/etc/group文件内存在  
+
+命令格式:  
+>chgrp [选项] [组] [文件]  
+
+命令参数:  
+>-c 当发生改变时输出调试信息  
+>-f 不显示错误信息  
+>-R 处理指定目录以及其子目录下的所有文件  
+>-v 运行时显示详细的处理信息  
+
+例一:将log.log文件由root群组改为bin群组  
+*chgrp -v bin log.log*  
+
+例二:改变文件log1.log 的群组属性，使得文件log1.log的群组属性和参考文件log2.log的群组属性相同  
+*chgrp --reference=log2.log log1.log*  
+
+
+### chown  
+chown将指定文件的拥有者改为指定的用户或组，用户可以是用户名或者用户ID  
+
+命令格式:  
+>chown [选项]... [所有者][:[组]] 文件...  
+
+例一:改变log.log拥有者和群组为mail  
+*chown mail:mail log.log*  
+
+例二:改变log.log文件拥有者和群组为root  
+*chown root: log.log*  
+
+例三:改变log.log文件群组  
+*chown :mail log.log*  
+
+例四:改变指定目录以及其子目录下的所有文件的拥有者和群组  
+*chown -R -v root:mail test*  
+
+
+
+
+
+
