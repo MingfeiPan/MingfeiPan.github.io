@@ -1,0 +1,112 @@
+---
+layout: post
+title: Your daily dose of linux(7)
+category: linux
+tag : linux
+---
+<img src="/img/in-post/linux.jpg">
+
+### gzip
+
+继续过基础知识,通常gzip 是配合tar来的,不过也有需要直接解压的文件
+
+命令格式:  
+>gzip[参数][文件或者目录]  
+
+命令参数:  
+>-d 或--decompress或----uncompress 　解开压缩文件  
+>-f 或--force 　强行压缩文件  
+>-l 或--list 　列出压缩文件的相关信息  
+>-r 或--recursive 　递归处理，将指定目录下的所有文件及子目录并处理  
+>-v 或--verbose 　显示指令执行过程  
+
+例一: 目录下的每个文件压缩成.gz文件  
+*gzip \**  
+
+例二: 同例一,但是会列出详细信息  
+*gzip -dv \**  
+
+例三:压缩一个tar备份文件，此时压缩文件的扩展名为.tar.gz  
+*gzip -r log.tar*  
+
+例四:递归压缩目录  
+*gzip -rv test*  
+
+例五:递归解压目录  
+*gzip -dr test*  
+
+
+### df
+
+df用来检查linux服务器文件系统的磁盘空间占用情况,如果没有文件名被指定,则所有当前被挂载的文件系统的可用空间将被显示,默认情况下,磁盘空间将以1KB为单位进行显示  
+
+命令格式:  
+>df [选项] [文件]  
+
+命令参数:  
+>-a 全部文件系统列表  
+>-h 方便阅读方式显示  
+>-k 区块为1024字节  
+>-l 只显示本地文件系统  
+>-m 区块为1048576字节  
+
+例一:直接列出    
+*df*  
+
+<img src="/img/in-post/df.png">
+
+说明:  
+>linux中df命令的输出清单的第1列是代表文件系统对应的设备文件的路径名（一般是硬盘上的分区）  
+>第2列给出分区包含的数据块的数目  
+>第3，4列分别表示已用的和可用的数据块数目  
+>Mounted on列表示文件系统的挂载点  
+>中间几列mac特殊,就不列了  
+
+例二:易读方式列出  
+*df -h*  
+
+<img src="/img/in-post/df.png">
+
+
+### du  
+du是对文件和目录磁盘使用空间的查看  
+
+命令格式:  
+>du [选项][文件]  
+
+常用命令参数:  
+>-a或-all  显示目录中所有文件的大小  
+>-k或--kilobytes  以KB(1024bytes)为单位输出  
+>-m或--megabytes  以MB为单位输出  
+>-s或--summarize  仅显示总计，只列出最后加总的值  
+>-h或--human-readable  以K，M，G为单位，提高信息的可读性  
+
+例一:显示目录或者文件所占空间  
+*du -ah*  
+
+例二:显示指定文件所占空间  
+*du -h test.log*  
+
+例三:查看指定目录的所占空间  
+*du -ah test/*  
+
+例四:显示多个文件或目录各自占用磁盘空间的大小，并统计总和  
+*du -ch 404-bg.jpg avatar.jpg*  
+
+例五:按照空间大小排序  
+*du -ah|sort -nr|more*  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
