@@ -1,0 +1,65 @@
+---
+layout: post
+title: Your daily dose of linux(11)
+category: linux
+tag : linux
+---
+<img src="/img/in-post/linux.jpg">
+
+### wc  
+
+统计指定文件中的字节数, 字数, 行数 来自 word count  
+
+命令格式:  
+>wc [选项]文件  
+
+命令参数:  
+>-c 统计字节数  
+>-l 统计行数  
+>-m 统计字符数  
+>-w 统计字数  
+>--version 显示版本信息  
+
+例一:查看文件的字节数、字数、行数  
+*wc test.log*  
+`7   8     70     test.log`  
+`行数 单词数 字节数 文件名`  
+
+例三:用来统计当前目录下的文件数  
+*ls -l | wc -l*  
+
+
+### zsh的一些快捷命令  
+
+刚好看到,顺便记一下自己常用的(mac zsh下)  
+
+>Ctrl+a 移到命令行首  
+>Ctrl+e 移到命令行尾  
+>Ctrl+u 删除整行  
+>Ctrl+k 从光标处删除至命令行尾  
+>Ctrl+w 从光标处删除至字首  
+>Ctrl+ <-/-> 在单词间移动  
+
+>Ctrl+r 搜索命令历史  
+>Ctrl+c 终止命令  
+>Ctrl+d EOF  
+
+### !
+>!! 执行上一条命令  
+>!ls 执行最近以ls开头的命令  
+>!ls:p 仅打印输出，而不执行  
+
+### history  
+
+直接写用例吧 这个很简单 但是很常用  
+
+例一:列出历史记录    
+*history*  
+
+例二:检索历史记录  
+*history | grep ssh*  
+
+例三:清空历史记录  
+*history -c*  
+
+
