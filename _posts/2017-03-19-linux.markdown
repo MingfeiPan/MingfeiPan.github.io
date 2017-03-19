@@ -1,0 +1,64 @@
+---
+layout: post
+title: Your daily dose of linux(10)
+category: linux
+tag : linux
+---
+<img src="/img/in-post/linux.jpg">
+
+### grep  
+
+每天工作绝对离不开的命令, 很舒服的正则表达式文本搜索, grep来自Global Regular Expression Print, grep可用于shell脚本，因为grep通过返回一个状态值来说明搜索的状态，如果模板搜索成功，则返回0，如果搜索不成功，则返回1，如果搜索的文件不存在，则返回2
+
+命令格式:  
+>grep [option] pattern file  
+
+命令参数:  
+>-A<显示行数> --after-context=<显示行数>   #除了显示符合范本样式的那一列之外，并显示该行之后的内容  
+>-B<显示行数>   --before-context=<显示行数>   #除了显示符合样式的那一行之外，并显示该行之前的内容  
+>-r   --recursive  
+>-v   --revert-match   #显示不包含匹配文本的所有行  
+>-n   --line-number   #在显示符合样式的那一行之前，标示出该行的列数编号  
+
+
+regex的规则:  
+`与通用的regex规则类似`  
+>^ 行的开始 如：'^grep'匹配所有以grep开头的行  
+>\$ 行的结束 如：'grep\$'匹配所有以grep结尾的行  
+>. 匹配一个非换行符的字符 如：'gr.p'匹配gr后接一个任意字符，然后是p  
+>* 匹配零个或多个先前字符 如：'\*grep'匹配所有一个或多个空格后紧跟grep的行  
+>.\* 一起用代表任意字符  
+>[] 匹配一个指定范围内的字符，如'[Gg]rep'匹配Grep和grep  
+>[^] 匹配一个不在指定范围内的字符，如：'[^A-FH-Z]rep'匹配不包含A-R和T-Z的一个字母开头，紧跟rep的行  
+>\(..\) 标记匹配字符，如'\(love\)'，love被标记为1  
+>\< 单词的开始，如:'\<grep'匹配包含以grep开头的单词的行  
+>\> 单词的结束，如'grep\>'匹配包含以grep结尾的单词的行  
+>x\{m\} 重复字符x，m次，如：'0\{5\}'匹配包含5个o的行  
+>x\{m,\} 重复字符x,至少m次，如：'o\{5,\}'匹配至少有5个o的行   
+>x\{m,n\} 重复字符x，至少m次，不多于n次，如：'o\{5,10\}'匹配5--10个o的行  
+>\w 匹配文字和数字字符，也就是[A-Za-z0-9]，如：'G\w*p'匹配以G后跟零个或多个文字或数字字符，然后是p  
+>\W \w的反置形式，匹配一个或多个非单词字符，如点号句号等  
+>\b 单词锁定符，如: '\bgrep\b'只匹配grep  
+
+
+例一:配合ps 查找指定进程  
+*ps -ef | grep nginx*  
+
+例二:配合ps 查找指定进程数  
+*ps -ef | grep -c nginx*  
+
+例三:从文件中读取关键词进行搜索  
+*cat test.log | grep -f test2.log*  
+`输出test.log文件中含有从test2.log文件中读取出的关键词的内容行`    
+
+例四:找出已a开头的行内容  
+*cat test.txt |grep ^a*  
+
+例五:输出以cat结尾的行内容  
+*cat test.txt |grep hat$*  
+
+例六:递归的查找本dir下所有包含header的内容,并显示其所在文件  
+*grep -R "header" ./*  
+
+
+
