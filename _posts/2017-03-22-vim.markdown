@@ -1,0 +1,64 @@
+---
+layout: post
+title: vim more
+category: vim
+tag : vim
+---
+
+### vim 
+`vimtutor 是很实用的练习, 请经常回顾`  
+
+更快的移动:  
+>% 匹配括号移动，包括 (, {, [  需要把光标先移到括号上  
+>\*,#  匹配光标当前所在的单词 \*移动光标到下一个 #移动光标到上一个  
+>fa 到下一个为a的字符处  
+
+区域选择:  
+`非常叼`  
+>\<action>a\<object> 或者 \<action>i\<object>  i会不包含符号本身, a会包含符号本身  
+
+*action可以是任何的命令, d,y,v 都可以*  
+*object可以是一个词一个句子或者 ", ', ), ], }这种字符*  
+
+例:删除两个{}的内容  
+*da{*  
+
+块操作:  
+`也是叼的1b`  
+>记录一次典型的块操作, 0 ctrl-v jjjj I // [esc] 将会注释一段代码
+>0 移动到行头  
+><C-v> 开始块操作  
+>jjjj 移动  
+>I // 输入 //注释符号   
+>[esc] esc为每一行生效  
+
+<img src="/img/in-post/block.gif">
+
+自动提示:  
+>ctrl-n, ctrl-p  
+
+<img src="/img/in-post/ctrl-n.gif">
+
+宏操作:  
+>记录一次宏操作 qq i // [esc] q  
+>qq 开始录制,此宏命名为q  
+>i // 输入// 注释行为内容  
+>[esc] q 结束录制  
+
+可视化:  
+>v,V,ctrl-v  
+>这个模式下 可以hjkl选择各个区块  
+
+可用操作:  
+>J 把所有的行连接起来 变成一行  
+><  > 左右缩进  
+>= 自动缩进  
+
+分屏:  
+>ctrl-w v或者s 分别左右或者上下打开分屏   
+>ctrl-w 加 hjkl 可以换屏去上下左右  
+
+
+
+
+ 
