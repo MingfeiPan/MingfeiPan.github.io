@@ -1,0 +1,127 @@
+---
+layout: post
+title: Your daily dose of linux(12)
+category: linux
+tag : linux
+---
+<img src="/img/in-post/linux.jpg">
+
+### ps  
+
+ps 来自process status ps命令列出当前进程的快照 它所提供的查看结果并不动态连续的 如果想对进程时间监控 请使用top  
+
+linux进程有5种状态:  
+>运行, 正在运行或者在运行队列中等待  
+>中断, 休眠中, 受阻, 在等待某个条件的形成或接受到信号    
+>不可中断, 进程必须等待直到有中断发生  
+>僵死, 进程已终止, 但进程描述符存在  
+>停止, 进程收到SIGSTOP, SIGSTP, SIGTIN, SIGTOU信号后停止运行  
+
+
+ps工具标识进程的5种状态码:  
+>D 不可中断 uninterruptible sleep  
+>R 运行 runnable  
+>S 中断 sleeping   
+>T 停止 traced or stopped   
+>Z 僵死 a defunct (”zombie”) process   
+
+命令参数:  
+>a  显示所有进程  
+>c  显示进程的真实名称  
+>e  显示环境变量  
+>f  显示程序间的关系  
+>r  显示当前终端的进程  
+>u  指定用户的所有进程  
+>-a 显示同一终端下的所有程序  
+>-A -e 显示所有进程  
+>-N 反向选择  
+>-H 显示树状结构  
+>-au 显示较详细的资讯  
+>-aux 显示所有包含其他使用者的行程   
+
+例一:显示所有进程信息  
+*ps -A*  
+
+<img src="/img/in-post/psa.png">  
+
+例二:显示指定用户信息  
+*ps -u root*  
+
+例三:显示所有进程信息, 连同命令行  
+*ps -ef*  
+
+<img src="/img/in-post/psef.png">   
+
+参数说明:  
+>UID:用户ID  
+>PID:进程ID  
+>PPID:父进程ID  
+>C:CPU用于计算执行优先级的因子 数值越大, 表明进程是CPU密集型运算, 执行优先级会降低 数值越小, 表明进程是I/O密集型运算, 执行优先级会提高  
+>STIME:进程启动的时间  
+>TTY:完整的终端名称  
+>TIME:CPU时间  
+>CMD:完整的启动进程所用的命令和参数  
+
+
+
+例四: ps 与grep 常用组合用法, 查找特定进程  
+*ps -ef | grep ssh*  
+
+<img src="/img/in-post/psefssh.png">   
+
+例五: 将目前属于这次登入的 PID 与相关信息列示出来  
+*ps -l*  
+
+<img src="/img/in-post/psl.png">   
+
+例六:列出目前所有的正在内存当中的程序  
+*ps aux*  
+
+<img src="/img/in-post/psaux.png">  
+
+参数说明:  
+>USER: 该 process 属主  
+>PID: process id  
+>%CPU:该 process 使用掉的 CPU 资源百分比  
+>%MEM:该 process 所占用的物理内存百分比  
+>VSZ:该 process 使用掉的虚拟内存量 (Kbytes)  
+>RSS:该 process 占用的固定的内存量 (Kbytes)  
+>TTY:该 process 是在那个终端机上面运作，若与终端机无关，则显示?它们是由系统启动的 tty1-tty6 是本机上面的登入者程序，若为 pts/0 等等的，则表示为由网络连接进主机的程序  
+>STAT:该程序目前的状态，主要的状态有  
+
+*R, 该程序目前正在运作，或者是可被运作*  
+*S, 该程序目前正在睡眠当中 (可说是 idle 状态)，但可被某些讯号 (signal) 唤醒*  
+*T, 该程序目前正在侦测或者是停止*  
+*Z, 该程序应该已经终止, 但是其父程序却无法正常的终止他, 造成 zombie (疆尸) 程序的状态*  
+*D, 无法中断的休眠状态（通常 IO 的进程）*  
+*W, 进入内存交换 （从内核2.6开始无效）*  
+*X, 死掉的进程 （基本很少见）*  
+*<, 优先级高的进程*  
+*N, 优先级较低的进程*  
+*L, 有些页被锁进内存*  
+*s, 进程的领导者（在它之下有子进程）*  
+*I, 多线程，克隆线程（使用 CLONE_THREAD, 类似 NPTL pthreads）*  
+*+, 位于后台的进程组*  
+
+>START:该 process 被触发启动的时间  
+>TIME:该 process 实际使用 CPU 运作的时间  
+>COMMAND:该程序的实际指令 如果过长会被截断显示   
+
+例七:|管道和 more 连接起来分页查看  
+*ps aux | more*  
+
+例八:输出指定的字段  
+*ps -o pid,ppid,pgrp,session,tpgid,comm*  
+
+
+`另外`  
+ps -ef 跟ps aux的区别我刚开始学的时候就不太确定, 这里也说一下  
+>-ef是System V展示风格, 而aux是BSD风格  
+>COMMADN列如果过长, aux会截断显示, 而ef不会  
+>查看进程的CPU占用率和内存占用率, 可以使用aux  
+>查看进程的父进程ID和完整的COMMAND命令, 可以使用ef  
+
+
+
+
+
