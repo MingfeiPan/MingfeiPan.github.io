@@ -107,8 +107,8 @@ ps工具标识进程的5种状态码:
 >TIME:该 process 实际使用 CPU 运作的时间  
 >COMMAND:该程序的实际指令 如果过长会被截断显示   
 
-例七:|管道和 more 连接起来分页查看  
-*ps aux | more*  
+例七:\|管道和 more 连接起来分页查看  
+*ps aux \| more*  
 
 例八:输出指定的字段  
 *ps -o pid,ppid,pgrp,session,tpgid,comm*  
