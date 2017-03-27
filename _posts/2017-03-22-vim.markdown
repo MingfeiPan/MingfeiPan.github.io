@@ -55,7 +55,9 @@ tag : vim
 >ctrl-w v或者s 分别左右或者上下打开分屏   
 >ctrl-w 加 hjkl 可以换屏去上下左右  
 
+额外:  
+>Double quote to single quote  
+*%s/\"\([^"]\*\)\"/'\1'/g*  
+>Single quote to double quote  
+*%s/\'\([^'']\*\)\'/"\1"/g*  
 
-
-
- 
