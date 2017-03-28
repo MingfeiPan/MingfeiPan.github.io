@@ -6,6 +6,8 @@ tag : linux
 ---
 <img src="/img/in-post/linux.jpg">
 
+### kill  
+
 kill命令用来终止指定的进程的执行, 终止一个前台进程可以使用Ctrl+C键 终止一个后台进程就要用kill了  kill命令通过向进程发送指定的信号来结束相应进程 采用编号为15的TERM信号 TERM信号将终止所有不能捕获该信号的进程 对于可以捕获该信号的进程用编号为9的kill信号 来强行kill进程  
 
 命令格式:
