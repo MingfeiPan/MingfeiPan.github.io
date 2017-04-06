@@ -1,0 +1,82 @@
+---
+layout: post
+title: Your daily dose of linux(15)
+category: linux
+tag : linux
+---
+<img src="/img/in-post/linux.jpg">
+
+### free  
+
+free命令可以显示Linux系统中空闲的 已用的物理内存及swap内存,及被内核使用的buffer, 看起来已经没人单独用这个了  
+
+命令参数:  
+>-b 以Byte为单位显示内存使用情况  
+>-k 以KB为单位显示内存使用情况  
+>-m 以MB为单位显示内存使用情况  
+>-g 以GB为单位显示内存使用情况  
+
+例一:显示内存使用情况  
+*free -m*  
+
+<img src="/img/in-post/free.png">  
+
+说明:  
+>total:总计物理内存的大小, used:已使用多大, free:可用有多少, Shared:多个进程共享的内存总额, Buffers/cached:磁盘缓存的大小  
+>第三行(-/+ buffers/cached) used,已使用多大 free,可用有多少  
+>第四行 是交换分区SWAP 也就是虚拟内存  
+
+
+### vmstat  
+
+vmstat 来自 Virtual Meomory Statistics, 可对操作系统的虚拟内存 进程 CPU活动进行监控  
+
+命令参数:  
+>a 显示活跃和非活跃内存  
+>f 显示从系统启动至今的fork数量  
+>delay 刷新时间间隔, 如果不指定, 只显示一条结果  
+>d 显示磁盘相关统计信息  
+
+
+例一:显示虚拟内存使用情况  
+*vmstat*  
+
+<img src="/img/in-post/vmstat.png">  
+
+Procs, 进程:
+>r 运行队列中进程数量  
+>b 等待IO的进程数量  
+
+Memory, 内存:  
+>swpd 使用虚拟内存大小  
+>free 可用内存大小  
+>buff 用作缓冲的内存大小  
+>cache 用作缓存的内存大小  
+
+Swap, 交换:  
+>si 每秒从交换区写到内存的大小  
+>so 每秒写入交换区的内存大小  
+
+IO:
+>bi 每秒读取的块数  
+>bo 每秒写入的块数  
+
+System:  
+>in 每秒中断数，包括时钟中断  
+>cs 每秒上下文切换数  
+
+CPU(百分比):  
+>us 用户进程执行时间  
+>sy 系统进程执行时间  
+>id 空闲时间(包括IO等待时间),中央处理器的空闲时间  
+>wa 等待IO时间  
+
+例二:查看系统fork次数    
+*vmstat -f*  
+
+例三:查看内存使用的详细信息  
+*vmstat -s*  
+
+例四:查看磁盘的读/写  
+*vmstat -d*  
+
