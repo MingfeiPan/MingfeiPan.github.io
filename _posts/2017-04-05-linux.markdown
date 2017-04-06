@@ -1,0 +1,78 @@
+---
+layout: post
+title: Your daily dose of linux(16)
+category: linux
+tag : linux
+---
+<img src="/img/in-post/linux.jpg">
+
+### iostat  
+
+iostat 来自 I/O statistics, 对系统的磁盘操作活动进行监视  
+
+命令参数:  
+>d 显示磁盘使用情况  
+>C 显示CPU使用情况  
+>k 以KB为单位显示  
+>m 以M为单位显示  
+>x 显示详细信息  
+
+
+例一:显示所有设备负载情况  
+*iostat*  
+
+<img src="/img/in-post/iostat.png">  
+
+说明:  
+CPU,均为所占百分比  
+>%user, CPU处在用户模式下的时间  
+>%nice, CPU处在带NICE值的用户模式下的时间  
+>%system, CPU处在系统模式下的时间  
+>%iowait, CPU等待输入输出完成时间  
+`%iowait的值过高，表示硬盘存在I/O瓶颈`  
+>%steal, 理程序维护另一个虚拟处理器时, 虚拟CPU的无意识等待时间  
+>%idle, CPU空闲时间  
+`%idle值高，表示CPU较空闲，如果%idle值高但系统响应慢时，有可能是CPU等待分配内存，此时应加大内存容量`  
+`%idle值持续低于10，那么系统的CPU处理能力相对较低，系统中最需要解决的资源是CPU`  
+
+
+Device  
+>tps, transfers per second 该设备每秒的传输次数, 一次传输意思是一次I/O请求, 多个逻辑请求可能会被合并为一次I/O请求, 一次传输请求的大小是未知的  
+>kB_read/s, 每秒从设备读取的数据量  
+>kB_wrtn/s, 每秒向设备写入的数据量  
+>kB_read, 读取的总数据量  
+>kB_wrtn, 写入的总数量数据量  
+
+例二:显示指定磁盘信息  
+*iostat -d sda1*  
+
+例三:查看详细信息  
+*iostat -m*  
+
+<img src="/img/in-post/iostatm.png">  
+
+说明:  
+Device  
+>rrqm/s, 每秒进行merge的读操作数目  
+>wrqm/s, 每秒进行merge的写操作数目  
+>r/s, rio/s 每秒完成的读I/O设备次数  
+>w/s, wio/s 每秒完成的写I/O设备次数  
+>rsec/s, 每秒读扇区数  
+>wsec/s, 每秒写扇区数  
+>rkB/s, 每秒读K字节数, 是rsect/s的一半, 因为每扇区大小为512字节    
+>wkB/s, 每秒写K字节数, 是wsect/s的一半  
+>avgrq-sz, 平均每次设备I/O操作的数据大小 (扇区)  
+>avgqu-sz, 平均I/O队列长度  
+`如果avgqu-sz比较大, 表示有当量io在等待`  
+
+>await, 平均每次设备I/O操作的等待时间 (毫秒)  
+>svctm, 平均每次设备I/O操作的服务时间 (毫秒)  
+`如果svctm比较接近await, 说明I/O几乎没有等待时间`  
+`如果await远大于svctm, 说明I/O队列太长, io响应太慢, 需要进行必要优化`  
+
+>%util, 一秒中有百分之多少的时间用于 I/O 操作, 即被io消耗的cpu百分比  
+`如果%util接近100%, 说明产生的I/O请求太多, I/O系统已经满负荷, 该磁盘可能存在瓶颈`  
+
+例四:显示tty和Cpu信息  
+*iostat -t*  
+
