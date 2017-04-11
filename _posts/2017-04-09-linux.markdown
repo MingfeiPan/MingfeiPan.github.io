@@ -1,0 +1,81 @@
+---
+layout: post
+title: Your daily dose of linux(17)
+category: linux
+tag : linux
+---
+<img src="/img/in-post/linux.jpg">
+
+### netstat  
+
+netstat命令用于显示与IP、TCP、UDP和ICMP协议相关的统计数据, 用于检验本机各端口的网络连接情况  
+
+命令格式:  
+>netstat [-acCeFghilMnNoprstuvVwx][-A<网络类型>][--ip]  
+
+命令参数(真他吗多啊):  
+> -a或–all 显示所有连线中的Socket  
+> -A<网络类型>或–<网络类型> 列出该网络类型连线中的相关地址  
+> -c或–continuous 持续列出网络状态  
+> -C或–cache 显示路由器配置的快取信息  
+> -e或–extend 显示网络其他相关信息  
+> -F或–fib 显示FIB  
+> -g或–groups 显示多重广播功能群组组员名单  
+> -h或–help 在线帮助  
+> -i或–interfaces 显示网络界面信息表单  
+> -l或–listening 显示监控中的服务器的Socket  
+> -M或–masquerade 显示伪装的网络连线  
+> -n或–numeric 直接使用IP地址，而不通过域名服务器  
+> -N或–netlink或–symbolic 显示网络硬件外围设备的符号连接名称  
+> -o或–timers 显示计时器  
+> -p或–programs 显示正在使用Socket的程序识别码和程序名称  
+> -r或–route 显示Routing Table  
+> -s或–statistice 显示网络工作信息统计表  
+> -t或–tcp 显示TCP传输协议的连线状况  
+> -u或–udp 显示UDP传输协议的连线状况  
+> -v或–verbose 显示指令执行过程  
+> -V或–version 显示版本信息  
+> -w或–raw 显示RAW传输协议的连线状况  
+> -x或–unix 此参数的效果和指定”-A unix”参数相同  
+> –ip或–inet 此参数的效果和指定”-A inet”参数相同  
+
+例一:直接使用  
+*netstat*  
+
+<img src="/img/in-post/netstat.png">
+
+说明:  
+>第一块, Active Internet connections, 有源TCP连接 其中Recv-Q, Send-Q 表示接收队列和发送队列, 通常为0, 如果不是则表示软件包正在队列中堆积  
+>另一个, Active UNIX domain sockets, 有源Unix域套接口, 只能用于本机通信  
+>Proto显示连接使用的协议, RefCnt表示连接到socket上的进程号, Types显示socket的类型, State显示socket当前的状态, Path表示连接到socket的其它进程使用的path  
+
+socket type:  
+>-t TCP, -u UDP, DGRAM 表明数据是datagrams格式基于udp, STREAM表明数据是stream格式, 基于tcp  
+
+state type:
+>LISTEN, 侦听来自远方的TCP端口的连接请求  
+>SYN-SENT, 再发送连接请求后等待匹配的连接请求, 如果有大量这样的状态包，检查是否被攻击  
+>SYN-RECEIVED, 再收到和发送一个连接请求后等待对方对连接请求的确认, 如有大量此状态, 检查flood攻击  
+>ESTABLISHED, 代表一个打开的连接  
+>FIN-WAIT-1, 等待远程TCP连接中断请求，或先前的连接中断请求的确认  
+>FIN-WAIT-2, 从远程TCP等待连接中断请求  
+>CLOSE-WAIT, 等待从本地用户发来的连接中断请求  
+>CLOSING, 等待远程TCP对连接中断的确认  
+>LAST-ACK, 等待原来的发向远程TCP的连接中断请求的确认, 出现, 检查是否被攻击  
+>TIME-WAIT, 等待足够的时间以确保远程TCP接收到连接中断请求的确认  
+>CLOSED, 没有任何连接状态  
+
+例二:列出所有端口  
+*netstat -a*  
+  
+<img src="/img/in-post/netstata.png">  
+
+例三:显示所有udp连接  
+*netstat -anu*  
+
+<img src="/img/in-post/netstatanu.png">  
+
+例四:显示UDP端口号的使用情况  
+*netstat -apu*
+
+<img src="/img/in-post/netstatapu.png">  
