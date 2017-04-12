@@ -1,0 +1,58 @@
+---
+layout: post
+title: Your daily dose of linux(18)
+category: linux
+tag : linux
+---
+<img src="/img/in-post/linux.jpg">
+
+### netstat more  
+
+更多实例  
+
+例一:显示网络统计信息  
+*netstat -s*  
+
+>按照各个协议分别显示其统计数据, 如果应用程序（如Web浏览器）运行速度比较慢, 或者不能显示Web页的数据，可以用本选项来查看一下所显示的信息  
+
+例二:显示监听的socket  
+*netstat -l*  
+
+<img src="/img/in-post/netstatl.png">  
+
+例三:显示所有已建立的有效连接  
+*netstat -n*  
+
+<img src="/img/in-post/netstatn.png">  
+
+例四:显示路由表信息  
+*netstat -r*  
+
+<img src="/img/in-post/netstatr.png">  
+
+例五:列出所有tcp端口  
+*netstat -at*  
+
+<img src="/img/in-post/netstatat.png">  
+
+例六:把状态全都取出来后使用uniq -c统计后再进行排序  
+*netstat -nat |awk '{print $6}'|sort|uniq -c*  
+
+<img src="/img/in-post/netstatnat.png">  
+
+例七:找出程序运行的端口  
+*netstat -anp | grep ssh*  
+
+<img src="/img/in-post/netstatssh.png">  
+
+`注意-p可以显示PID/进程名称, 所以不麻烦的话所有netstat都带着-p好了`  
+
+例八:找出运行在指定端口的进程  
+*netstat -anpt | grep ':6379'*  
+
+<img src="/img/in-post/netstatanpt.png">  
+  
+
+
+
+
