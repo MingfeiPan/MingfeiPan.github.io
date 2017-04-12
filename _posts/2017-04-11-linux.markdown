@@ -50,7 +50,7 @@ tag : linux
 例八:找出运行在指定端口的进程  
 *netstat -anpt | grep ':6379'*  
 
-<img src="/img/in-post/netstatanpt.png">  
+<img src="/img/in-post/netstatantp.png">  
   
 
 
