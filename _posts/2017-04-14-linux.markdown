@@ -1,0 +1,52 @@
+---
+layout: post
+title: Your daily dose of linux(20)
+category: linux
+tag : linux
+---
+<img src="/img/in-post/linux.jpg">
+
+### lsof more  
+
+more example  
+
+例一:列出所有tcp网络连接信息  
+*lsof -i tcp*  
+
+<img src="/img/in-post/lsoftcp.png">  
+
+例二:列出所有udp网络连接信息  
+*lsof -i udp*  
+
+<img src="/img/in-post/lsofudp.png">  
+
+例三:列出谁在使用某个端口  
+*lsof -i :3306*  
+
+例四:列出谁在使用某个特定的udp端口  
+*lsof -i udp:60001*  
+
+例五:列出某个用户的所有活跃的网络端口  
+*lsof -a -u root -i*  
+
+<img src="/img/in-post/lsofa.png">  
+
+例六:列出所有网络文件系统  
+*lsof -N*  
+
+例七:根据文件描述列出对应的文件信息  
+*lsof -d txt*  
+
+<img src="/img/in-post/lsoftxt.png">  
+
+*lsof -d 2*  
+
+<img src="/img/in-post/lsof2.png">  
+
+例八:列出COMMAND列中包含字符串sshd, 且文件描符的类型为txt的文件信息  
+*lsof -c sshd -a -d txt*  
+
+例九:列出被进程号为111的进程所打开的所有IPV4 network files   
+*lsof -i 4 -a -p 111*  
+
+
