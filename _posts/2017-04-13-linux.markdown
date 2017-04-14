@@ -1,0 +1,103 @@
+---
+layout: post
+title: Your daily dose of linux(20)
+category: linux
+tag : linux
+---
+<img src="/img/in-post/linux.jpg">
+
+### lsof  
+
+lsof 列出当前系统打开的文件, 在linux环境下, 任何事物都以文件的形式存在, 通过文件不仅仅可以访问常规数据, 还可以访问网络连接和硬件  
+
+命令功能:  
+查看进程打开的文件, 打开文件的进程, 进程打开的端口, 找回/恢复删除的文件, 可以打开的文件包括 普通文件, 目录, 网络文件, 字符或设备文件, 共享库, 管道, 符号链接  
+
+命令参数:  
+>-a 列出打开文件存在的进程  
+>-c<进程名> 列出指定进程所打开的文件  
+>-g 列出GID号进程详情  
+>-d<文件号> 列出占用该文件号的进程  
+>+d<目录>  列出目录下被打开的文件  
+>+D<目录>  递归列出目录下被打开的文件  
+>-n<目录>  列出使用NFS的文件  
+>-i<条件>  列出符合条件的进程  
+>-p<进程号> 列出指定进程号所打开的文件  
+>-u  列出UID号进程详情  
+
+
+例一:直接使用  
+*lsof*  
+
+<img src="/img/in-post/lsof.png">  
+
+说明:  
+>COMMAND, 进程的名称  
+>PID, 进程标识符  
+>USER, 进程所有者  
+>FD, 文件描述符 应用程序通过文件描述符识别该文件 如cwd,txt等  
+FD可以是:  
+
+cwd, current work dirctory, 应用程序的当前工作目录  
+txt, 类型的文件是程序代码, 如应用程序二进制文件本身或共享库  
+lnn, library references  
+er, FD information error  
+mem, memory-mapped file  
+mmap, mmap：memory-mapped device  
+pd, parent directory  
+rtd, root directory  
+0, 标准输出  
+1, 标准输入  
+2, 标准错误  
+`一般在标准输出、标准错误、标准输入后还跟着文件状态模式, r、w、u等`  
+
+>TYPE, 文件类型, 包括:  
+
+DIR, 表示目录  
+CHR, 表示字符类型  
+BLK, 块设备类型  
+UNIX, UNIX域socket    
+FIFO, 先进先出队列  
+IPv4, IP协议socket  
+
+>DEVICE, 指定磁盘的名称  
+>SIZE, 文件的大小  
+>NODE, 索引节点  
+>NAME, 打开文件的确切名称  
+
+例二:查找某个文件相关的进程  
+*lsof zsh*  
+
+<img src="/img/in-post/lsofzsh.png">  
+
+例三:列出某个用户打开的文件信息  
+*lsof -u root*  
+
+例四:列出某个程序进程所打开的文件信息  
+*lsof -c php-fpm*  
+
+<img src="/img/in-post/lsofphp.png"> 
+
+例五:列出某个用户以及某个进程所打开的文件信息  
+*lsof -u root -c php-fpm*  
+
+例六:列出除了某个用户外的被打开的文件信息  
+*lsof -u ^root*  
+
+例七:列出某个进程号打开的文件  
+*lsof -p 1*  
+
+例八:列出多个进程号对应的文件信息  
+*lsof -p 1,2,3*  
+
+例九:列出除了某个进程号, 其他进程号所打开的文件信息  
+*lsof -p ^1*  
+
+例十:列出所有的网络连接  
+*lsof -i*  
+
+<img src="/img/in-post/lsofi.png"> 
+
+
+ 																																																																																																																																																																																																																										
+
