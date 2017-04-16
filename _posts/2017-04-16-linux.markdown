@@ -1,0 +1,75 @@
+---
+layout: post
+title: Your daily dose of linux(23)
+category: linux
+tag : linux
+---
+<img src="/img/in-post/linux.jpg">
+
+### ping  
+
+通常用来测试与目标主机的连通性, 通过发送ICMP ECHO_REQUEST数据包到网络主机, 并显示响应情况  
+
+命令格式:  
+>ping [参数] [主机名或IP地址]  
+
+命令参数:  
+>-d 使用Socket的SO_DEBUG功能  
+>-f 极限检测,大量且快速地送网络封包给一台机器  
+>-n 只输出数值  
+>-q 不显示任何传送封包的信息, 只显示最后的结果  
+>-r 忽略普通的Routing Table, 直接将数据包送到远端主机上  
+>-R 记录路由过程  
+>-v 详细显示指令的执行过程  
+>-I 网络界面, 使用指定的网络界面送出数据包  
+>-t 存活数值, 设置存活数值TTL的大小  
+
+例一:ping  
+*ping 220.243.212.211*  
+
+<img src="/img/in-post/ping.png">  
+
+### traceroute  
+通过traceroute可以知道信息计算机到互联网另一端的主机路径  
+
+命令格式:  
+>traceroute[参数][主机]  
+
+命令参数:  
+>-d 使用Socket层级的排错功能  
+>-f 设置第一个检测数据包的存活数值TTL的大小  
+>-i 使用指定的网络界面送出数据包  
+>-I 使用ICMP回应取代UDP资料信息  
+>-m 设置检测数据包的最大存活数值TTL的大小  
+>-p 设置UDP传输协议的通信端口  
+>-r 忽略普通的Routing Table, 直接将数据包送到远端主机上  
+>-s 设置本地主机送出数据包的IP地址  
+>-v 详细显示指令的执行过程  
+
+例一:直接查询    
+*traceroute www.baidu.com*    
+
+<img src="/img/in-post/traceroute.png">
+
+说明:  
+>按序列号从1开始, 每个纪录表示一跳, 每跳表示一个网关, 三个时间单位为ms, 表示向每个网关发送三个数据包后分别得到的响应时间, 如果带参数 -q 4 表示发四个数据包  
+>有时候会看到星号返回, 可能是防火墙封掉了ICMP的返回信息, 所以得不到数据返回  
+
+例二:显示IP地址, 不查主机名  
+*traceroute -n www.baidu.com*  
+
+
+例三:探测包使用的基本UDP端口设置6888  
+*traceroute -p 6888 www.baidu.com*  
+
+例四:绕过正常的路由表, 直接发送到网络相连的主机  
+*traceroute -r www.baidu.com*  
+
+例五:把对外发探测包的等待响应时间设置为3秒  
+*traceroute -w 3 www.baidu.com*  
+
+工作过程:  
+Traceroute利用ICMP及IP header的TTL(time to live)参数, traceroute送出一个TTL是1的IP datagram(事实上, 每次送出的为3个40字节的包, 包括源地址, 目的地址和包发出的时间标签)到目的地, 当路径上的第一个路由器(router)收到这个datagram时, 它将TTL减1 此时, TTL变为0了, 所以该路由器会将此datagram丢掉, 并送回一个ICMP time exceeded消息(包括发IP包的源地址, IP包的所有内容及路由器的IP地址), traceroute收到这个消息后, 便知道这个路由器存在于这个路径上, 接着traceroute再送出另一个TTL是2的datagram, 发现第2个路由器... 每次将送出的datagram的TTL加1来发现另一个路由器, 这个重复的动作一直持续到某个datagram抵达目的地 当datagram到达目的地后, 该主机并不会送回ICMP time exceeded消息, 而是会送回一个ICMP port unreachable的消息, 而当traceroute收到这个消息时, 便知道目的地已经到达, 所以traceroute在ServerSide不需要Daemon进程  
+
+ 
+
