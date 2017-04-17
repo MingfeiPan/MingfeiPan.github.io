@@ -1,0 +1,109 @@
+---
+layout: post
+title: Your daily dose of linux(24)
+category: linux
+tag : linux
+---
+<img src="/img/in-post/linux.jpg">
+
+### ss  
+
+来自Socket Statistics, ss命令可以用来获取socket统计信息, 类似netstat, 但是当服务器的socket连接数量变大之后, ss会比netstat快很多  
+
+命令格式:  
+>ss[参数][过滤]  
+
+命令参数:  
+>-n, 不解析服务名称  
+>-r, 解析主机名  
+>-a, 显示所有socket   
+>-l, 显示监听状态的socket  
+>-o, 显示计时器信息  
+>-e, 显示详细的socket信息  
+>-m, 显示socket的内存使用情况  
+>-p, 显示socket使用概况  
+>-4, 仅显示IPv4的  
+>-6, 仅显示IPv6的  
+>-0, 显示PACKET的socket  
+>-t, 只显示tcp socket  
+>-u, 只显示udp socket  
+>-x, 只显示unix socket  
+
+例一:显示TCP连接  
+*ss -t -a*  
+
+<img src="/img/in-post/ssta.png">  
+
+例二:显示ss摘要  
+*ss -s*  
+
+<img src="/img/in-post/sss.png">  
+
+例三:列出所有打开的网络连接端口  
+*ss -l*  
+
+例四:查看进程使用的socket  
+*ss -pl*  
+
+例五:显示所有UDP Sockets  
+*ss -u -a*  
+
+### telnet  
+
+telnet命令通常用来远程登录, telnet因为采用明文传送报文, 基本被ssh替代了  
+
+命令格式:  
+>telnet[参数][主机]  
+
+例一:一般使用  
+*telnet 192.168.120.204*  
+
+### wget  
+
+下载工具, wget支持HTTP, HTTPS和FTP协议, 可以使用HTTP代理  
+
+命令格式:  
+>wget [参数] [URL地址]  
+
+命令参数:  
+>-o, –output-file=FILE 把记录写到FILE文件中  
+>-i, –input-file=FILE 下载在FILE文件中出现的URLs  
+>-b, –background 启动后转入后台执行  
+>-c, 接着下载没下载完的文件  
+>-S, –server-response 打印服务器的回应  
+>-spider, 不下载任何东西  
+>–limit-rate=RATE 限定下载输率  
+>-U, –user-agent=AGENT 设定代理的名称为 AGENT而不是 Wget/VERSION  
+>-O, –output-document=FILE 把文档写到FILE文件中  
+
+
+例一:使用wget下载单个文件  
+*wget www.163.com*  
+
+例二:使用wget -O下载并以不同的文件名保存  
+*wget -O exmaple.html www.163.com*  
+
+例三:使用wget –limit -rate限速下载  
+*wget --limit-rate=300k {url}*  
+
+例四:使用wget -c断点续传  
+*wget -c {url}*  
+
+例五:使用wget -b后台下载  
+*wget -b {url}*  
+
+例六:伪装代理名称下载  
+*wget --user-agent="Mozilla/5.0 (Windows; U; Windows NT 6.1; en-US) AppleWebKit/534.16 (KHTML, like Gecko) Chrome/10.0.648.204 Safari/534.16" {url}*  
+
+例七:使用wget –spider测试下载链接  
+*wget --spider {url}*  
+
+例八:使用wget -i下载多个文件  
+*wget -i filelist.txt*  
+>filelist.txt存放多个url  
+
+
+
+
+
+
