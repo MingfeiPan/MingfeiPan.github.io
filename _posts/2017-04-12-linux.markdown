@@ -1,0 +1,78 @@
+---
+layout: post
+title: Your daily dose of linux(19)
+category: linux
+tag : linux
+---
+<img src="/img/in-post/linux.jpg">
+
+### watch  
+
+watch周期性的执行下个程序, 并全屏显示执行结果  
+
+命令参数:  
+>-n 指定间隔的时间  
+>-d 高亮显示变化的区域  
+
+例一:每隔一秒高亮显示网络链接数的变化情况  
+*watch -n 1 -d netstat -ant*  
+
+例二:每隔一秒高亮显示php-fpm链接数的变化情况  
+*watch -n 1 -d 'pstree|grep php-fpm'*  
+
+例三:10秒一次输出系统的平均负载  
+*watch -n 10 'cat /proc/loadavg'*  
+
+
+### crontab  
+
+提供了控制计划任务, crond是linux下用来周期性的执行某种任务或等待处理某些事件的一个守护进程, crond进程每分钟会定期检查是否有要执行的任务, 如果有要执行的任务, 则自动执行该任务  
+
+命令参数:  
+>-e, 编辑某个用户的crontab文件内容  
+>-l, 显示某个用户的crontab文件内容  
+
+cron目录 /var/spool/cron 创建了本用户的同名文件后, 需要crontab root(以root)为例, 然后crontal -l 可以看到被添加的cron内容  
+
+
+例一:每1分钟执行一次command  
+*\* \* \* \* \* command*  
+
+具体编写规则:  
+>\* 代表所有可能的值, 例month字段是星号, 则表示在满足其它字段的制约条件后每月都执行该命令操作  
+>, 用逗号隔开的值指定一个列表范围, 如1,2,5,7,8,9  
+>- 可以用整数之间的中杠表示一个整数范围, 例如2-6表示2,3,4,5,6  
+>/ 可以用正斜线指定时间的间隔频率, */10如果用在minute字段, 表示每十分钟执行一次  
+
+请善用[crontab.guru](https://crontab.guru)来调这个时间, 非常好用  
+
+注意:  
+>当手动执行脚本OK, 但是crontab死活不执行时, 请查看是否是环境变量的问题  
+>注意清理产生的日志, 或者可以在cron中直接把正常输出跟错误输出重定向到 /dev/null  
+`>/dev/null 2>&1`  
+
+### scp  
+
+scp来自secure copy, 用于在Linux下远程拷贝文件, 他的传输是加密的  
+
+命令格式:  
+>scp [参数] [原路径] [目标路径]  
+
+命令参数:  
+>-C  允许压缩  
+>-r  递归复制整个目录  
+>-v 详细方式显示输出  
+>-P port port是指定数据传输用到的端口号   
+>-l limit 限定用户所能使用的带宽  
+
+例一:本地服务器复制到远程服务器  
+*scp local_file remote_username@remote_ip:remote_folder*  
+
+例二:复制目录  
+*scp -r local_folder remote_username@remote_ip:remote_folder*  
+
+例三:从远程复制到本地  
+*scp remote_username@remote_ip:remote_file local_folder*  
+
+
+
