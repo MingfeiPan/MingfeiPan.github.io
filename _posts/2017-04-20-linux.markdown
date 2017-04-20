@@ -1,0 +1,38 @@
+---
+layout: post
+title: Your daily dose of linux(25)
+category: linux
+tag : linux
+---
+<img src="/img/in-post/linux.jpg">
+
+### pstree  
+
+以树状图的方式展现进程之间的派生关系  
+
+命令参数:  
+>-a, 显示每个程序的完整指令  
+>-c, 不使用精简表示法  
+>-h, 表明现在运行的程序  
+>-p, 显示pid  
+>-u, 显示用户名  
+
+
+例一:直接使用  
+*pstree*  
+
+<img src="/img/in-post/pstree.png">   
+
+
+例二:显示当前进程的进程id  
+*pstree -p*  
+
+
+<img src="/img/in-post/pstreep.png">   
+
+
+例三:pstree详细信息  
+*pstree -apu*  
+
+
+<img src="/img/in-post/pstreeapu.png">   
