@@ -10,12 +10,12 @@ tag : linux
 `接上一篇,其实这些linux的东西写出来是想给我自己做个提醒的,有不熟的就记着以后看.所以多多少少会有缺的,请见谅`  
 
 ### find  
->find是必须熟练的linux命令  
+find是必须熟练的linux命令  
+
 命令格式:  
-
 >find pathname -options [-print -exec -ok ...]   
-命令参数:  
 
+命令参数:  
 >pathname *find 所需要查找的路径, /为root*  
 >print *将输出内容打印到标准输出*  
 >exec *对输出可执行的shell命令 格式为'command' {  } ;*  
