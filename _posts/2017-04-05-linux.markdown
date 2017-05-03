@@ -48,9 +48,9 @@ Device
 *iostat -d sda1*  
 
 例三:查看详细信息  
-*iostat -m*  
+*iostat -x*  
 
-<img src="/img/in-post/iostatm.png">  
+<img src="/img/in-post/iostatx.png">  
 
 说明:  
 Device  
