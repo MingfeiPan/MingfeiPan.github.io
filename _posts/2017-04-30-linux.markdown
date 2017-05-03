@@ -1,0 +1,52 @@
+---
+layout: post
+title: Your daily dose of linux(26)
+category: linux
+tag : linux
+---
+<img src="/img/in-post/linux.jpg">
+
+### dstat  
+
+dstat, 类似于top, free, iostat, vmstat等多个工具的合集, 可以用来替代  
+
+命令参数:  
+>-c, 统计cpu状态  
+>-d, 统计磁盘读写状态  
+>-l, 统计系统负载信息  
+>-m, 统计物理内存使用情况  
+>-s, 统计swap已使用和剩余量  
+>-n, 统计网络使用状况  
+>-r, 统计io请求  
+>-p, 统计进程信息  
+>-y, 统计系统信息, 包括中断上下文切换  
+>-socket, 统计socket使用情况  
+>–output file, 写入到csv文件  
+
+例一:详细的列出了当前系统值得监控的状态    
+*dstat -cmsdnlp --socket --fs  -D sda9 -N lo,etho 10 5*  
+
+<img src="/img/in-post/dstat.png">  
+
+解析:  
+cpu  
+>usr, 用户进程消耗的CPU时间百分比, 值比较高时, 说明用户进程消耗的CPU时间多, 如果长期超过50%, 那么应该考虑优化程序设计了  
+>sys, 内核进程消耗的CPU时间百分比  
+>wai, IO等待消耗的CPU时间百分比, 值高时说明IO等待严重  
+>idl, CPU空闲状态百分比  
+
+procs  
+>run, 运行的和等待运行的进程数, 如果长期大于1, 则需增加cpu  
+>blk, 处于不可中断状态的进程数  
+
+swap  
+>si, 交换内存使用, 由磁盘调入内存  
+>so, 交换内存使用, 由内存调入磁盘 内存够用的时候, 这2个值都是0, 如果这2个值长期大于0时, 系统性能会受到影响  
+
+
+例二:找出占用资源最高的进程和用户,--top-(io|bio|cpu|cputime|cputime-avg|mem)    
+*dstat --top-mem --top-io --top-cpu*  
+
+<img src="/img/in-post/dstattop.png">  
+
+
