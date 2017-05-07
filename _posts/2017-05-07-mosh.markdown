@@ -1,0 +1,26 @@
+---
+layout: post
+title: mosh
+category: linux
+tag : linux
+---
+
+### mosh  
+
+很早之前买了凤凰城的bwg, ssh慢的要死, 后来发现了mosh这个神器, 总算是有所改善了, 真的好用, mosh基于udp方式传输, 支持在服务端创建一个临时的Key供客户端一次性连接, 总而言之, 会大幅度提升你海对岸vps ssh的使用体验  
+
+*官网在这里: [mosh.org](https://mosh.org/)* , 需要在服务器跟客户端共同安装  
+
+一些用例:  
+
+mosh 直接使用  
+*mosh user@{ip}*  
+
+mosh ssh  
+*mosh user@{ip} --ssh="ssh -p 2222"*
+
+其他的请参考官网, 很详细
+
+ 
+
+
