@@ -11,7 +11,7 @@ vim化使用chrome, 好吧就是进一步减少你的鼠标or触控板操作
 
 <img src="/img/in-post/vimium.png">  
 
-<img src="/img/in-post/vimium1.png">  
+<img src="/img/in-post/vimium2.png">  
 
 好吧, 分分类, 挑几个用的多的列一哈  
 >j,k 上下滑动  
