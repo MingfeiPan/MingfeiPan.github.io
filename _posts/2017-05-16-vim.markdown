@@ -1,0 +1,40 @@
+---
+layout: post
+title: vim
+category: vim
+tag : vim
+---
+
+### vimium  
+
+vim化使用chrome, 好吧就是进一步减少你的鼠标or触控板操作  
+
+<img src="/img/in-post/vimium.png">  
+
+<img src="/img/in-post/vimium1.png">  
+
+好吧, 分分类, 挑几个用的多的列一哈  
+>j,k 上下滑动  
+>gg, G 到顶部, 底部  
+>d,u 上下滑动一整页  
+
+>yy, 复制当前链接到clipboard  
+>p, 在当前tab打开clipboard的链接  
+>P, 在一个新的tab打开clipboard的链接  
+>f, 在当前页打开一个tab  
+>F, 在新页打开一个tab  
+>o, 在当前页打开一个在bookmark, history的tab  
+>O, 在新页打开一个在bookmark, history的tab  
+>T, 搜索已经打开的tab  
+>b, 打开一个bookmark  
+>B, 在新页打开一个bookmark  
+>/, find  
+>n,N find next/last  
+
+>H,L 去到上一页/下一页  
+>J,K 去到上一个/下一个tab  
+>t, 新建一个tab  
+>yt, 复制一个当前tab并打开  
+
+
+
