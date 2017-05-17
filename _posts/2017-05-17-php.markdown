@@ -1,0 +1,27 @@
+---
+layout: post
+title: xhprof在yaf框架下的一个bug,php版本5.5
+category: php
+tag : php yaf
+---
+
+昨天遇到的一个bug, nginx在php5.5, yaf框架下搭建xhprof时page 返回http code 502, 报错  
+```
+recv() failed (104: Connection reset by peer) while reading response header from upstream
+```
+
+查了好久, 才查到问题, 记录一下, 是xhprof的一个bug ,yaf的github issue里有一条记录详细说明了bug的细节, 测试代码:  
+```
+function main() {
+echo "hello,world\n";
+xhprof_enable(XHPROF_FLAGS_CPU + XHPROF_FLAGS_MEMORY);
+}
+$application = new Yaf_Application($config);
+$application->execute('main');
+```
+
+[issue在这里](https://github.com/laruence/yaf/issues/120)  
+鸟哥给出了修复, 提了patch, 但是官方的版本貌似没有更新, 这里有一份更新的代码是鸟哥的fork, 测试完美可用  
+  
+[xhprof fixed](https://github.com/laruence/xhprof.git)  
+
