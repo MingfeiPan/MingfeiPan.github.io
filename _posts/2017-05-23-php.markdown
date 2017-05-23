@@ -1,0 +1,36 @@
+---
+layout: post
+title: php所采用的hash算法, DJBX33A
+category: php
+tag : php
+---
+
+hash table是php最核心的部分, 从数组到函数表, 符号表都是用hash table来存储的, 数组在php中的地位, 大家应该都懂的, 那么一个正确的hash函数就极为重要了, 今天就说这个hash函数  
+####DJBX33A(Daniel J. Bernstein, Times 33 with Addition)  
+我真的第一眼就看到了*djb*, 名字很强, 由Dan Bernstein提出, 这个算法被广泛运用到多个软件, Apache, Perl和Berkeley DB 对于字符串而言该算法的速度非常快, 而且分类非常好, 冲突小, 分布均匀  
+ 
+
+```
+hash(i) = hash(i-1) * 33 + str[i]
+```
+
+核心内容就是上面这段代码, 下面是php源码中的版本, 来自7.04 在文件 /Zend/zend_string.h中    
+
+<img src="/img/in-post/djb.png"> 
+
+php这里把*33, 改进为了位操作, 会更快  
+
+```
+(hash << 5) + hash
+```
+
+其实在名字里, 包括在公式里, 奇怪之处就是这个33了 为什么一定是*33, 这段话写在代码的注释里, 是解释了的  
+```
+
+<img src="/img/in-post/djbwhy.png">
+
+>这段话就不翻译了, 核心在于Ralf分析了大部分奇数都是可以做这个数字的, 但是33包括其他17, 31, 63, 127这些数字的核心优势是可以将乘法转换为位运算与加减法来做, 这样才可以做到既保证了速度, 又保证了好的分布 
+
+ 
+
+
