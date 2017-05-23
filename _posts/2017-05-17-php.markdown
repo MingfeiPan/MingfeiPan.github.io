@@ -2,7 +2,7 @@
 layout: post
 title: xhprof在yaf框架下的一个bug,php版本5.5
 category: php
-tag : php yaf
+tag : php
 ---
 
 昨天遇到的一个bug, nginx在php5.5, yaf框架下搭建xhprof时page 返回http code 502, 报错  
