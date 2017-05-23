@@ -6,7 +6,7 @@ tag : php
 ---
 
 hash table是php最核心的部分, 从数组到函数表, 符号表都是用hash table来存储的, 数组在php中的地位, 大家应该都懂的, 那么一个正确的hash函数就极为重要了, 今天就说这个hash函数  
-####DJBX33A(Daniel J. Bernstein, Times 33 with Addition)  
+#### DJBX33A(Daniel J. Bernstein, Times 33 with Addition)  
 我真的第一眼就看到了*djb*, 名字很强, 由Dan Bernstein提出, 这个算法被广泛运用到多个软件, Apache, Perl和Berkeley DB 对于字符串而言该算法的速度非常快, 而且分类非常好, 冲突小, 分布均匀  
  
 
