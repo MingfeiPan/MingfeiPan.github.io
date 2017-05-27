@@ -40,7 +40,7 @@ ht-TableMask = ht-TableSize - 1;
 
 具体代码如下:  
 
-<src img="/img/in-post/hash2.png">  
+<img src="/img/in-post/hash2.png">  
 
 ```
 array size 65536
@@ -48,10 +48,11 @@ array size 65536
 ```
 版本php7.0.4, 执行了7s多才结束  
 
-<src img="/img/in-post/hash3.png">  
+<img src="/img/in-post/hash3.png">  
 
 >疯狂占用cpu资源  
 
-5.4的php版本 通过控制input数量来做了一些控制, 但是貌似没有从数据结构上处理了这个hash碰撞问题
+这样就完成了一次hash碰撞攻击, 5.4的php版本 通过控制input数量来做了一些控制, 但是貌似没有从数据结构上处理了这个hash碰撞问题, 现在版本已经来到了7.0, 仍旧在代码层面是可以碰撞的  
+
 
 
