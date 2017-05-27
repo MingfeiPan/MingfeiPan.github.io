@@ -39,6 +39,7 @@ ht-TableMask = ht-TableSize - 1;
 *11 0000 0000 0000 0000 & 0 1111 1111 1111 1111 = 0*  
 
 具体代码如下:  
+
 <src img="/img/in-post/hash2.png">  
 
 ```
