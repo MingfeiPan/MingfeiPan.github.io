@@ -54,8 +54,10 @@ kramdown:
 # duoshuo_share: true                     # set to false if you want to use Comment without Sharing
 
 # github issue
-github_issue: true
+# github_issue: true
 
+# youyan
+youyan: true
 
 # Analytics settings
 # Baidu Analytics
