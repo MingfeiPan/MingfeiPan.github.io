@@ -220,6 +220,24 @@ layout: default
 <!-- disqus 公共JS代码 end -->
 {% endif %}
 
+{% if site.github_issue %}
+<div id="container"></div>
+<link rel="stylesheet" href="https://imsun.github.io/gitment/style/default.css">
+<script src="https://imsun.github.io/gitment/dist/gitment.browser.js"></script>
+<script>
+var gitment = new Gitment({
+  //id: '', // 可选。默认为 location.href
+  owner: 'MingfeiPan',
+  repo: 'https://github.com/MingfeiPan/issueforsite',
+  oauth: {
+    client_id: '2175efeca7a681758af0',
+    client_secret: '11ef935b9ac8e1a1091002133353f11e60b2bcf0',
+  },
+})
+gitment.render('container')
+</script>
+
+{% endif %}
 
 {% if site.anchorjs %}
 <!-- async load function -->
