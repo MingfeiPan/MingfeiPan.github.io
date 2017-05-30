@@ -56,9 +56,6 @@ kramdown:
 # github issue
 # github_issue: true
 
-# youyan
-youyan: true
-
 # Analytics settings
 # Baidu Analytics
 ba_track_id: 
