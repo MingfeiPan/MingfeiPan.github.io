@@ -56,6 +56,9 @@ kramdown:
 # github issue
 # github_issue: true
 
+# wangyi
+wangyi: true
+
 # Analytics settings
 # Baidu Analytics
 ba_track_id: 
