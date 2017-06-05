@@ -1,0 +1,59 @@
+---
+layout: post  
+title: nginx proxy\_set\_header  
+category: nginx  
+tag : nginx
+
+---
+
+### proxy\_set\_header  
+
+可以重新定义或者添加发往后端服务器的请求头, 具体语法为:  
+>proxy\_set\_header field value  
+
+value可以包含文本, 变量, 使用nginx反代后, proxy\_set\_header是我们
+
+反代之后, 服务器端的request.getRemoteAddr() 是无法取到用户的真实ip的, 它获取的是nginx代理服务器的地址, 此时我们需要获取用户的ip方法是:
+
+```
+proxy_set_header   X-Real-IP        $remote_addr;
+proxy_set_header   X-Forwarded-For  $proxy_add_x_forwarded_for;
+```
+在由php打印的$_SERVER中:  
+
+```
+[HTTP_X_REAL_IP] => 127.0.0.1  
+[HTTP_X_FORWARDED_FOR] => 127.0.0.1  
+```
+
+这两个字段就可以取到用户的真实ip了 
+
+关于这一句  
+
+```
+proxy_set_header   X-Forwarded-For  $proxy_add_x_forwarded_for;  
+```
+X-Forwarded-For 是一个用于识别通过HTTP代理或负载平衡器原始IP一个连接到Web服务器的客户机地址的非rfc标准, 如果设置了X-Forwarded-For, 每次经过proxy转发都会有记录, 格式就是client1,  proxy1, proxy2, 以逗号隔开各个地址, 由于是非rfc标准, 所以默认是没有的, 需要强制添加(如果是在默认情况下经过proxy转发的请求, 在后端看来远程地址就都是proxy端的ip), 也就是说只有当增加了这个变量, server side才能拿到  
+如果在多个层次的代理中设置了多次X-Forwarded-For, 那它可能会包含多个ip, 其结构:
+
+```
+X-Forwarded-For: client1, proxy1, proxy2  
+```
+
+也就是说, 如果有多级代理，X\-Forwarded\-For可以记录完整的代理链路, 所以实际的用户ip, 还是可以在这个变量的开始取到  
+
+`
+这里可以顺便提一下另一个值, x-real-ip, 相对应的它只能去到一级的ip, 如果服务器是一级代理那么它跟X\-Forwarded\-For可以等效, 但是多级时, 就不行了
+`
+
+我们还可以使用nginx的realip模块, 来利用X\-Forwarded\-For里的值 
+
+```
+set_real_ip_from 192.168.1.0/24;
+real_ip_header   X\-Forwarded\-For;
+```
+
+把从192.168.1网段里的请求全部使用X\-Forwarded\-For作为remote_addr  
+
+
+
