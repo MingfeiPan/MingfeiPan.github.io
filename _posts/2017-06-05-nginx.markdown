@@ -1,6 +1,6 @@
 ---
 layout: post  
-title: nginx proxy\_set\_header  
+title: nginx proxy_set_header  
 category: nginx  
 tag : nginx
 
