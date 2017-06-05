@@ -11,9 +11,7 @@ tag : nginx
 可以重新定义或者添加发往后端服务器的请求头, 具体语法为:  
 >proxy\_set\_header field value  
 
-value可以包含文本, 变量, 使用nginx反代后, proxy\_set\_header是我们
-
-反代之后, 服务器端的request.getRemoteAddr() 是无法取到用户的真实ip的, 它获取的是nginx代理服务器的地址, 此时我们需要获取用户的ip方法是:
+value可以包含文本, 变量, 使用nginx反代后, proxy\_set\_header是我们反代之后, 服务器端的request.getRemoteAddr() 是无法取到用户的真实ip的, 它获取的是nginx代理服务器的地址, 此时我们需要获取用户的ip方法是:
 
 ```
 proxy_set_header   X-Real-IP        $remote_addr;
