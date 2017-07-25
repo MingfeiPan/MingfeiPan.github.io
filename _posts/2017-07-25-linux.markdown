@@ -1,0 +1,68 @@
+---
+layout: post
+title: Your daily dose of linux(28)
+category: linux
+tag : linux
+---
+<img src="/img/in-post/linux.jpg">
+
+### nmap  
+
+功能超多, 可以用来探测网段内的主机, 探测目标主机的所有开放端口, 探测目标主机的操作系统, 可以代替traceroute的功能  
+
+参数,--help 可以列出所有参数,这里写出自己常用的  
+>-sP, 直接ping target  
+>-P0, 不ping target, 只进行扫描  
+>-PT, 使用tcp ping  
+>-PU, 使用udp ping  
+>-A, 使用所用高级扫描选项  
+>p, 端口选项 可以选择类似-p1-1000 这种扫描范围  
+>-T1-5可选, 设置时间选项, 数字越大越快  
+
+
+用例:
+例一:直接使用  
+*nmap [ip]*  
+
+例二:参数vv设置对结果详细输出 v,vv 细致程度越来越高  
+*nmap -vv [ip]*  
+
+例三:对制定范围内的端口进行扫描, 如1-100  
+*nmap -p1-100 [ip]*  
+
+例四:指定端口扫描  
+*nmap -p80,443 [ip]*  
+
+例五:以ping的方式扫描  
+*nmap -sP [ip]*  
+
+例六:nmap 理由跟踪功能  
+*nmap --traceroute [ip]*  
+
+例七:扫描一个网段下的ip  
+*nmap -sP 192.168.1.0/24*  
+*nmap -sP 192.168.1.0-255*  
+>`等同于 nmap -sn [ips]`  
+
+
+例八:扫描主机的操作系统信息  
+*nmap -O [ip]*  
+
+例九:服务扫描  
+*nmap -sV [ip]*
+
+例十:全面扫描, 包含1-10000端口的扫描, 操作系统, 路由跟踪, 服务探测  
+*nmap -A [ip]*  
+
+例十一:综合使用, 扫描端口1-100, 操作系统信息 并打印过程信息    
+*nmap -v -p1-100 -O [ip]*  
+
+
+
+
+
+
+
+  
+
+
