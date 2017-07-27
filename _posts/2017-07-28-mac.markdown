@@ -1,0 +1,30 @@
+---
+layout: post
+title: mac 终端代理
+category: linux
+tag : linux
+---
+<img src="/img/in-post/linux.jpg">
+
+### terminal proxy
+
+记录一下最近总结的mac下终端的代理方法, go get不到的滋味太痛苦  
+
+##### 直接export, 把ss的代理拿来用就好    
+
+`export all_proxy=socks5://127.0.0.1:1080`
+>直接export只能在当前这个bash session里生效, 把export写到bashrc或者zshrc里更好  
+
+##### 使用 proxychains  
+mac下可以用brew 安装  
+`brew install proxychains-ng`  
+
+之后修改conf文件, 应该是在/usr/local/etc/proxychains.conf, 修改到自己的代理位置, 如果是ss的话  
+`socks5 127.0.0.1 1080`  
+
+用例:  
+`proxychains4 curl myip.ipip.net`  
+
+
+##### 或者利用其他代理工具, 类似privoxy,charles也可以做到,就不多写了  
+
