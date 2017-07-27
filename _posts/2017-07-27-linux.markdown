@@ -1,0 +1,50 @@
+---
+layout: post
+title: Your daily dose of linux(29)
+category: linux
+tag : linux
+---
+<img src="/img/in-post/linux.jpg">
+
+### nmap more  
+
+更多用法, 短时间内未必用的到, 记一下顺便  
+
+例一:查看本地路由与接口, 网卡信息  
+*nmap -iflist*  
+
+例二:指定网口与ip  
+*nmap -e eth0 [ip]*  
+>使用-S指定源ip  
+
+*nmap -S [ip]*  
+>使用-D指定一组诱骗ip地址, ME表示真实地址  
+
+*nmap -D {ips,...,ME}*  
+
+例三:扫描防火墙  
+>利用syn扫描探测其端口开放状态,默认扫描1000个, 可探到开放端口80 http  
+
+*nmap -sS -T4 [ip]*  
+>然后利用fin扫描探测防火墙状态, fin扫描方式用于识别端口是否关闭, 收到rst回复说明该端口关闭, 否则说明是open或filtered状态  
+
+*nmap -sF -T4 [ip]*  
+>利用ack扫描判断端口是否被过滤, 针对ack探测包, 未被过滤的端口会恢复rst包  
+
+*nmap -sA -T4 [ip]*  
+
+例四:发现互联网上web服务器, 随机地产生10k个ip, 对其80端口进行扫描, 将结果存入nmap    
+*nmap -iR 10000 -sS -PS80 -p 80 -oG nmap.txt*  
+
+例五:随机生成ip  
+*nmap -iR 1200 -sL -n | grep Nmap | awk '{print $5}' | sort -n | uniq >! ip.txt*  
+>随机生成了1200个ip 并排序输出到ip.txt中  
+
+
+
+
+
+  
+
+
+ 
