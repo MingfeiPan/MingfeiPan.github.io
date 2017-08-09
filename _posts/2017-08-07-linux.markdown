@@ -1,0 +1,41 @@
+---
+layout: post
+title: Your daily dose of linux(30)
+category: linux
+tag : linux
+---
+<img src="/img/in-post/linux.jpg">
+
+### dig  
+
+全称domain infomation groper, 名字犀利, 可以取代nslookup, 因为显而易见的好处8个字母->3个字母  
+
+命令参数:  
+>-b, 设置查询的source ip  
+>-c, 可以设置class类型  
+>-f, 从文件内读取内容批量查询, 文件内容保持为一行一个查询  
+>-t, 设置查询类型, 默认是A类型, 可以设置为其他  
+>-p, 指定将要查询的端口号  
+>-x, 查询ip的信息, ipv4,ipv6均可  
+
+特别地, dig提供了一些(42个)所谓查询选项, 形如+key=value, 也可以+nokey来表示不使用, 其实也算参数吧 不一一列举了, 取几个常用的列一下 
+>+tcp, 使用tcp查询  
+>+trace, 启用跟踪, 将显示每个查询服务器的应答信息  
+>+nocmd, 在输出中不显示dig版本以及注释信息  
+>+short, 精简答复  
+>+nostats, 不显示查询时的统计信息  
+>+qr, 显示发送的请求  
+
+
+例一:直接dig, 会默认的查询根域.的信息  
+*dig*  
+
+例二:指定某dns服务器查询, 如果不指定, 会使用/etc/resolv.conf里的dns服务器作为上连服务器, 这里可以制定google 8.8.8.8为服务器  
+*dig @8.8.8.8 www.baidu.com A*  
+
+例三:追加默认域查询, 下列用法可以查询image.baidu.com  
+*dig +domain=baidu.com image*  
+
+例四:精简dig的输出  
+*dig +short www.baidu.com*  
+
