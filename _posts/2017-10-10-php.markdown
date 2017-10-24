@@ -9,7 +9,7 @@ tag : php
 
 前段时间工作中遇到的一个问题, 整体看了半天, 记录一下  
 
-起因是用php pcntl 这个扩展写多进程脚本, 父进程的mysql_conn没有close, fork之后子进程复制了这个conn, 之后子进程退出, 导致父进程中的该资源也无法继续使用了, 报错MySQL server has gone away  
+起因是用php pcntl 这个扩展写多进程脚本, 父进程的mysql_conn没有close, fork之后子进程复制了这个conn, 之后子进程退出, 导致父进程中的该资源也无法继续使用了, 报错MySQL server has gone away, 另外如果有多个子进程想利用这一个conn, 也会导致通信协议异常而最终mysql异常    
 
 php官网手册有关于这一段的一个[描述](http://php.net/manual/en/function.pcntl-fork.php#70721):  
 
