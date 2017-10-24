@@ -29,7 +29,7 @@ return fast ? true : false;
 
 然后下一步, 如果有环之后, 如何判断入口, 如图我们假设a点为起点, b点为环入口点, c点为第一次相遇点, 这是slow跑了n, 而fast跑了2n  
 
-<img src="/img/in-post/l1.png">
+<img src="/img/in-post/l1.jpg">
 
 >这时a到c的距离为n, fast的2n减去a到c也就是n的距离, 实际上在环中从c出发走一圈的距离就是n, 也就是l3+l2=n=l1+l2, 所以l3=l1, 我们只需要让一个点从起点a出发, 另一个点从第一次相遇点c出发, 同步移动, 等第一次相遇时就是环入口点b  
 
