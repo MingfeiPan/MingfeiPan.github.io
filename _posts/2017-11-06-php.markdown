@@ -1,0 +1,21 @@
+---
+layout: post
+title: php-fpm的一些笔记
+category: php
+tag : php
+---
+
+上周五, 修开发坏境时候, 突然发现起的php-fpm的父进程被kill掉了, fpm子进程变为孤儿进程, 但是nginx转发来的请求, fpm仍旧在正常处理, 父进程杀掉之后并没有影响php-fpm的功能, 查找一番之后, 定论fpm的父进程并不承担派发请求的角色, 于是顺便来记一下fpm的知识  
+
+基本上这一个发展过程cgi(Common Gateway Interface)->fastcgi->fpm(FastCGI Process Manager), cgi每处理一个请求都需要fork一个新的进程, fastcgi改进到允许进程在进程池内重复使用  
+
+>每个子进程都内置php解释器,并且进程常驻后台,支持prefork动态增加, 当没有可用子进程的时候, 服务器就会出现502返回, 这时manager会考虑新增子进程worker    
+
+>父进程并不接收和分发请求,而是子进程直接accpet请求后poll处理, 父进程不断调用epoll_wait和getsockopt是用来异步处理信号事件和定时器事件  
+
+`类似的, nginx也是父进程不处理请求,而是子进程直接处理, 区别在于nginx的父进程是epoll异步处理请求,而php-fpm仍然是poll`  
+
+
+顺便记录一个东西, 之前看书不知道在哪看到一句话, 如果系统里有大量孤儿进程, 只能重启来处理, 实际上周五处理时, 可以直接发送kill -9的信号来杀死进程  
+
+
