@@ -29,6 +29,12 @@ layout: default
                     {% comment %} if page.subtitle {% endcomment %}
                     <h2 class="subheading">{{ page.subtitle }}</h2>
                     {% comment %} endif {% endcomment %}
+                    {% if page.date %}
+                            <time datetime="{{ page.date | date_to_xmlschema }}" itemprop="datePublished">
+                              {% assign date_format = site.minima.date_format | default: "%b %-d, %Y" %}
+                              {{ page.date | date: date_format }}
+                            </time>
+                    {% endif %}                    
                     <span class="meta">Posted by {% if page.author %}{{ page.author }}{% else %}{{ site.title }}{% endif %} on {{ page.date | date: "%B %-d, %Y" }}</span>
                 </div>
             </div>
