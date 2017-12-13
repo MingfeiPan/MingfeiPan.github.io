@@ -1,0 +1,24 @@
+---
+layout: post
+title: 达夫设备-php hash
+category: php
+tag : php
+---
+
+今天看到了一个从来没见过的概念, 达夫设备-是串行复制(serial copy)的一种优化实现, 通过汇编语言编程时一常用方法, 实现展开循环, 进而提高执行效率, 这是维基百科上的解释, 直接看的话, 比较难懂  
+
+关于循环展开, 可以参考[维基百科](https://zh.wikipedia.org/wiki/%E5%BE%AA%E7%8E%AF%E5%B1%95%E5%BC%80), 简单说就是把循环的嵌套手动写开, 利用批量处理，减少总处理分支数, 提升效率  
+
+而php在编写时, 处理hash的函数zend_inline_hash_func 正利用了这一点  
+
+<img src="/img/in-post/djb.png">   
+
+通常遇到类似的情况我们会选择  
+
+```
+while(len-- > 0) do...
+
+```
+
+但是这里代码利用了达夫设备, len大于8时, 重复do8次, 小于8之后, 利用c switch fall through(掉落, 不break时会逐个执行)特性, 执行完之后的do, 实现的非常巧妙(有些编译器会自动优化循环, 以达成达夫设备的效果, 这需要参考具体操作系统以及编译器)  
+
