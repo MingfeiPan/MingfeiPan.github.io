@@ -1,0 +1,82 @@
+---
+layout: post
+title: Your daily dose of linux(32)
+category: linux
+tag : linux
+---
+<img src="/img/in-post/linux.jpg">
+
+### sed  
+
+sed, 也就是stream editor, 直译流编辑器, sed按行处理输入并输出, sed主要利用正则来匹配     
+
+命令格式:  
+>sed -[] func file, 通常func处分为确定范围+func参数, 确定范围可以选择 2,3 指定行数, 或者 /2/ 模式匹配(符合regex通用规则)    
+
+```
+顺便列一些最常用的正则规则:  
+^表示行首 /^a/ 以a开头的匹配 
+$表示行尾 /a$/ 以a结尾的匹配   
+\<表示词首 \<a 表示以a为首的词
+\>表示词尾 \>a 表示以a为尾的词  
+.表示任何单个字符  
+*表示出现了0或1或多次  
+[]字符集合 [abc]表示匹配a或b或c, 可以配合^使用表示不匹配  
+```
+
+命令参数:  
+>-n, sed默认输出所有行, -n参数可以控制只输出被sed处理的那一行, 通常配合p参数使用  
+>-e, 允许连续编辑 -e func ... -e func  
+>-f, -f file 将运行file里的文本信息作func  
+>-i, 直接修改读取的文件内容, 而不是输出到stdout  
+
+func参数:  
+>a, a后接的string 会被增加到新的一行, 类似i, 区别在输出位置    
+>d, 删除  
+>p, 打印  
+>s, 替换  
+
+命令实例:  
+1.删除某行并输出其他  
+*sed '/2/d' test.txt*  
+*ls | sed '2,3d'* `利用管道可以删除ls输出的2-3行后输出  `
+
+2.只输出处理行, 配合-n,p    
+*sed -n '/2/p' test.txt*  
+*ls | sed '10,20p'*  
+
+3.删除每行最后3个字符  
+*sed 's/...$//' test.txt*  
+
+4.给符合匹配的字符串后加内容  
+*sed 's/4/&nimahai/' test.txt*  `注意这里会在有4的行尾加nimahai这个string, &可以表示被匹配的部分`  
+
+5.匹配替换  
+*sed 's/fool/guys/' test.txt*  
+
+6.匹配替换并写入文件, 可以利用重定向或-i参数  
+*sed 's/fool/guys/' test.txt > a.txt*  
+*sed -i 's/fool/guys/' test.txt*    
+
+7.替换制定行  
+*sed "3,6s/fool/gus/g" test.txt*  
+
+8.行前插入  
+*sed '1 i aaa'test.txt*  `会在第一行前插入aaa`  
+
+9.行后插入  
+*sed '1 a aaa' test.txt* `会在第一行后插入aaa`  
+
+10.多个匹配, 可以利用-e  
+*sed -e '1,3s/my/your/g' -e '3,6s/me/him/g' test.txt*  
+*sed '1,3s/my/your/g; 3,6s/me/him/g' test.txt*  
+`把1到3行的替换, 接着再替换3-6行, 以上两句是等价的`  
+
+  
+
+
+
+
+
+
+
