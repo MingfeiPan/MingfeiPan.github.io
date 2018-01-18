@@ -1,0 +1,114 @@
+---
+layout: post
+title: php lambdas & closures
+category: php
+tag : php
+---
+
+php大概从5.3引入了lambdas跟closures, 也就是我们所知道的匿名函数跟闭包函数, 匿名函数在写python跟haskell的时候都很熟悉了, 而闭包之前在js那里也见过, 闭包在php中可能跟在js中并不太相同   
+
+写php的兄弟们应该是长久以来习惯了命令式编程方式, 而很少接触函数式的内容, 所以匿名跟闭包也算一个很好的补充了  
+
+### 匿名函数  
+顾名思义, 匿名函数就是没有名字的函数, 你可以把函数赋给一个变量, 也可以当作另一个函数的参数(比如作回调函数)使用  
+
+通常我们会写一个命名函数, 然后去调用他  
+
+```
+function hi(){
+	return "hi, mingfei";
+}
+
+echo hi();
+```
+而匿名函数则不同
+
+```
+//赋值给变量
+$hi = function(){
+	return "hi, mingfei";
+}
+
+echo $hi();
+
+//传给函数做参数
+function hihi($msg){
+	echo $msg();
+}
+
+hihi(function(){
+	return "hi, mingfei";
+});
+
+```
+
+当你有类似之用一次的函数需求时, 就可以考虑使用匿名函数, 随手写随手用, 通常情况下, 也可以让代码看起来更紧凑更舒服(过多使用会降低可读性)  
+
+### 闭包函数  
+
+php中的闭包函数可以用匿名函数+可以使用外部变量来解释   
+
+```
+$user = "mingfei";
+
+$hi = function() use ($user){
+	echo "Hi $user";
+}
+$hi();
+```
+这里会打印 Hi mingfei, 请注意php这里 use的结构不可缺少, 没有回报错, 这里的$user也可以传引用 \&$user, 用以改变原值  
+
+php一系列可以使用callback func的array(array_filter, array_walk...)函数, 配合匿名函数与闭包函数, 可以达成最大化的便用    
+
+```
+$numbers = [1,2,3,4];
+$multi = 3;
+
+//walk
+array_walk($numbers, function($number) use($multi){
+	echo $number * $multi;
+});
+
+//filter
+var_dump(array_filter($numbers, function($number){
+	return $number % 2;
+}));
+
+```
+
+以上应该是属于最基本的应用, 我们知道闭包在js中的一个特性, 函数返回后, 局部变量会销毁, 但当此时有闭包函数, 则该变量不回被回收而成为一个游离态的变量, 这里有个例子说明  
+
+```
+
+ function counter(){
+ 	$counter = 1;
+ 	return function() use(&$counter){
+ 		return $counter++;
+ 	};
+ }
+ 
+ //测试
+$counter1 = counter();  
+$counter2 = counter();  
+echo $counter1().PHP\_EOL;    
+echo $counter1().PHP\_EOL;    
+echo $counter1().PHP\_EOL;    
+echo $counter2().PHP\_EOL;    
+echo $counter2().PHP\_EOL;  
+
+```
+
+结果  
+
+```
+1
+2
+3
+1
+2  
+```
+
+这里每次调用counter都会创建独立的$counter和闭包, 所以返回的闭包相互之间是独立的, 其携带的counter每次自增, 就可以达成N个互相独立的计数器 
+ 
+
+
