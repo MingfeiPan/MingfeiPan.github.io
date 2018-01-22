@@ -1,0 +1,102 @@
+---
+layout: post
+title: php中的"high order function"
+category: php
+tag : php
+---
+
+high order function概念来自fp, php中应该没这个说法, 但我们是有一类函数可以接受函数作为参数的, 所以称作high order function也不是不可以  
+
+###array_map  
+array array_map(callback, array()...)  
+为数组的每个元素应用回调函数(可以接收多个数组做参数)   
+
+```
+$multi = 3;
+$numbers = [1,2,3,4];
+$arr = array_map(function($number) use ($multi){
+	return $number * $multi;
+}, $numbers);
+
+var_dump($arr);
+
+print out:
+[3,6,9,12]
+```
+
+###array_walk  
+bool array_walk(array(), callback);  
+使用用户自定义函数对数组中的每个元素做回调处理  
+
+字面的意思跟map非常相似, 细微的可以看到范围值一个是array, 一个是bool, 另外, array_walk有一个很重要的特征:array_walk()不会受到array内部数组指针的影响, array_walk()会遍历整个数组而不管指针的位置  
+
+```
+array_walk($numbers, function($number) use ($multi){
+    echo $number * $multi;
+    echo PHP_EOL;
+});
+
+print out:
+3
+6
+9
+12
+```
+walk强调遍历的过程, 并不返回任何关于数组的内容, 如果要改变原数组可以对输入array加&引用处理  
+
+###array_filter 
+array array_filter(array(), callback);
+用回调函数过滤数组中的单元, 跟其他语言中的fitler类似  
+
+```
+var_dump(array_filter($numbers, function($number){
+    return $number % 2;
+}));
+
+print out:[1,3];
+```
+
+另外, array_filter可以接受第三个参数 ARRAY_FILTER_USE_KEY表示callback只接受键名作为参数, ARRAY_FILTER_USE_BOTH表示callback同时接受键名和减值  
+
+```
+$arr = ['a'=>1, 'b'=>2, 'c'=>3, 'd'=>4];
+var_dump(array_filter($arr, function($key){
+    return $key == 'a';
+}, ARRAY_FILTER_USE_KEY));
+
+print out:['a'=>1]
+
+
+var_dump(array_filter($arr, function($key, $value){
+    return $value == 'a' || $key == 4;
+}, ARRAY_FILTER_USE_BOTH));
+
+print out:['a'=>1, 'd'=>4]
+
+```
+`注意 ARRAY_FILTER_USE_BOTH时参数顺序`  
+
+
+###array_reduce  
+mixed array_reduce(array(), callback);
+利用callback对array中的元素进行化简, 每次执行两个元素  
+
+```
+$numbers = [1,2,3,4];
+echo array_reduce($numbers, function($num1, $num2){
+    return $num1 + $num2;
+});
+
+print out: 10
+```
+
+这里就是一些最基本的使用了, php代码很多地方都可以利用这些high order function  
+
+
+
+
+
+
+
+
+
