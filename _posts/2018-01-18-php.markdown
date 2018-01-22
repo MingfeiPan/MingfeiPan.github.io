@@ -7,7 +7,7 @@ tag : php
 
 high order function概念来自fp, php中应该没这个说法, 但我们是有一类函数可以接受函数作为参数的, 所以称作high order function也不是不可以  
 
-###array_map  
+### array_map  
 array array_map(callback, array()...)  
 为数组的每个元素应用回调函数(可以接收多个数组做参数)   
 
@@ -24,7 +24,7 @@ print out:
 [3,6,9,12]
 ```
 
-###array_walk  
+### array_walk  
 bool array_walk(array(), callback);  
 使用用户自定义函数对数组中的每个元素做回调处理  
 
@@ -44,8 +44,8 @@ print out:
 ```
 walk强调遍历的过程, 并不返回任何关于数组的内容, 如果要改变原数组可以对输入array加&引用处理  
 
-###array_filter 
-array array_filter(array(), callback);
+### array_filter 
+array array_filter(array(), callback);  
 用回调函数过滤数组中的单元, 跟其他语言中的fitler类似  
 
 ```
@@ -77,8 +77,8 @@ print out:['a'=>1, 'd'=>4]
 `注意 ARRAY_FILTER_USE_BOTH时参数顺序`  
 
 
-###array_reduce  
-mixed array_reduce(array(), callback);
+### array_reduce  
+mixed array_reduce(array(), callback);  
 利用callback对array中的元素进行化简, 每次执行两个元素  
 
 ```
