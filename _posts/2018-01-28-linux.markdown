@@ -39,7 +39,7 @@ tcpdump是linux下的一个抓包工具, 非常强力, 下面先从一个例子�
 
 最下面一段就是包内的内容, 我们也一层一层来看这个数据包, 首先是以太网协议的头部, 先贴一张ethernet头部的结构图 
 
-<img src="/img/in-post/ip.png">
+<img src="/img/in-post/ethernet.png">
 
 所以很自然的 我们可以看到 前14个字节  
 
