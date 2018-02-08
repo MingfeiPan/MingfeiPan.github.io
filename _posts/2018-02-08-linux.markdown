@@ -72,4 +72,4 @@ tcpdump最特别的地方是可以给定表达式来筛选数据包, 包括类�
 
 
 最后贴一张听说是最精炼的tcpdump使用守则  
-<img src="/img/in-post/tcpdump2.png">
+<img src="/img/in-post/tcpdump2.jpg">
