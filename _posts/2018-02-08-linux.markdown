@@ -1,0 +1,75 @@
+---
+layout: post
+title: tcpdump more
+category: linux
+tag : linux
+---
+
+<img src="/img/in-post/linux.jpg">
+
+### tcpdump more  
+
+继续tcpdump的内容  
+
+命令参数:  
+>-c, 指定要抓取包的数量  
+>-i, 指定要抓取包的网卡端口  
+>-nn, 对地址以及端口用数字显示  
+>-s len, 设置抓包长度, 默认为65535 bytes  
+>-e, 输出的每行中都将包括数据链路层头部信息, 也就是MAC信息  
+>-XX, 输出包的头部数据, 更详细  
+>v, vv, vvv, 产生不同级别详细的数据  
+>-D, 列出可以供抓包的网卡  
+>-w, 将抓包数据输出到文件中而不是标准输出, 注意这不是简单的重定向输出, 数据将以raw packets方式直接存储  
+>-r, 从给定的数据包文件中读取数据, 配合w使用  
+
+tcpdump最特别的地方是可以给定表达式来筛选数据包, 包括类型, 方向, 协议  
+例如`tcpdump -i eth0 -c 1 'udp'`将接收udp的包  
+
+具体可选的限制包括:  
+>类型, host/net/port/port range  
+>方向, src/dst/src or dst/src and dst, 默认为src or dst  
+>协议, tcp/udp/arp/ip/icmp 
+
+一个基本的表达式 通常的形式为 protocol dir type xxx  并且可以使用and or not < > 等等符号来扩展这个表达式 
+
+例一: 查询源端口为80的数据包  
+*tcpdump -i eth0 -XX -nn -c 10 'src port 80'*  
+
+例二: 查询与本机与192.168网段通信的数据包  
+*tcpdump -i eth0 -XX -nn -c 10 'net 192.168'*  
+
+例三: 查询到本机22端口的tcp包  
+*tcpdump -i eth0 -XX -nn -c 10 'tcp dst port 22'*  
+
+例四: 查询本机跟baidu.com或qiyi.com  
+*tcpdump -i eth0 -XX -nn -c 10 'host  baidu.com or qiyi.com*  
+
+
+高级查询, 结合特有表达式组合, tcpdump可以抓到各种各样的包, 来看几个例子  
+
+例一: 获取建立TCP三次握手中第一个网络包, 即带有SYN标记位的网络包, 并且主机不能为baidu.com  
+*tcpdump 'tcp[tcpflags] & tcp-syn != 0 and not dst host baidu.com'*  
+
+例二: 获取IP包长超过500字节的网络包
+*tcpdump 'ip[2:2] > 500'*  
+
+想要利用到这种比较复杂的表达式时, 就需要对各种协议有足够的了解了, 而tcpdump支持形如proto[offset:size]的写法, 比如ip[2:2]就是ip协议3, 4字节的内容, 而这两个字节正是用来表示ip包长度的  
+
+我们可以发挥想象组合出更多的例子:  
+例三: 获取TCP协议的SYN、ACK、FIN标识字段  
+*tcp[tcpflags] & tcp-syn*    
+*tcp[tcpflags] & tcp-ack*  
+*tcp[tcpflags] & tcp-fin*  
+
+还可以跟直接的获取ACK包:  
+*tcp[13]==18*  
+
+例四: 获取一个区间内的端口, portrange  
+*tcpdump -i eth0 -XX -nn -c 10 'portrange 52-55'*  
+
+其实关于表达式还有很多东西非常巧妙, 具体的只能在使用中练习了, 在常规使用中, 掌握-i, -XX -nn -c 的组合已经非常足够了  
+
+
+最后贴一张听说是最精炼的tcpdump使用守则  
+<img src="/img/in-post/tcpdump2.png">
