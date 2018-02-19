@@ -7,7 +7,7 @@ tag : algorithm
 
 ### top-k  
 
-很多面试都喜欢问top-k的问题, 通常被描述为在某个数量求其前k小或者前k大的数, 可选的方法有通过高效的排序, 比如快排或者堆排序来找出top k的数, 但是只能做到O(nlogn), 但其实存在一种O(n)的方法, 也就是我们要说的BFPRT algorithm  
+很多面试都喜欢问top-k的问题, 通常被描述为在某个数量求其前k小或者前k大的数, 可选的方法有通过高效的排序, 比如快排或者堆排序来找出top k的数, 但是只能做到O(nlogn), 其实存在一种O(n)的方法, 也就是我们要说的BFPRT algorithm  
 
 #BFPRT  
 
@@ -30,7 +30,7 @@ function select(list, left, right, n)
             left := pivotIndex + 1
 ```  
 
-其实非常直白, 找到一个轴点, 做一次快排分区, 查看分出来的数与k的关系然后再继续递归  
+其实非常直白, 找到一个轴点, 做一次快排分区, 查看分出来的数的数量与k的关系然后再继续递归  
 
 单次快排partition我们都很熟悉:  
 
@@ -51,7 +51,7 @@ int partition(int* arr, int left, int right, int pivot)
 }
 ```  
 
-这里最核心的是如何高效的找到pivot, 我们可以看出在退化情况下, 其实这就是一个快排的过程, 经过中位数的中位数算法, 确实可以把O(nlogn)进化到O(n)  
+这里最核心的是如何高效的找到pivot, 我们可以看出在退化情况下, 比如我们每次把第一个数当作轴点, 其实这就是一个快排的过程, 然而经过中位数的中位数算法, 确实可以挑选到高效的轴点从而把时间复杂度从O(nlogn)进化到O(n)  
 
 ```
 int getpivot(int* arr, int left, int right)
