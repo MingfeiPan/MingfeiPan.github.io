@@ -9,7 +9,7 @@ tag : algorithm
 
 很多面试都喜欢问top-k的问题, 通常被描述为在某个数量求其前k小或者前k大的数, 可选的方法有通过高效的排序, 比如快排或者堆排序来找出top k的数, 但是只能做到O(nlogn), 其实存在一种O(n)的方法, 也就是我们要说的BFPRT algorithm  
 
-#BFPRT  
+### BFPRT  
 
 [BFPRT](https://en.wikipedia.org/wiki/Median_of_medians), 像我们所熟知的AVL树一样, 来自其发明人的名字组合Blum、Floyd、Pratt、Rivest、Tarjan, 也可以被称作中文数的中位数算法, 其核心是挑选在快速排序中每次使用的所谓轴点(pivot)的特殊方法  
 
