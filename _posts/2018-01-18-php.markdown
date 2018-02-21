@@ -1,11 +1,11 @@
 ---
 layout: post
-title: php中的"high order function"
+title: php中的"higher order function"
 category: php
 tag : php
 ---
 
-high order function概念来自fp, php中应该没这个说法, 但我们是有一类函数可以接受函数作为参数的, 所以称作high order function也不是不可以  
+higher order function概念来自fp, php中应该没这个说法, 但我们是有一类函数可以接受函数作为参数的, 所以称作higher order function也不是不可以  
 
 ### array_map  
 array array_map(callback, array()...)  
@@ -90,7 +90,7 @@ echo array_reduce($numbers, function($num1, $num2){
 print out: 10
 ```
 
-这里就是一些最基本的使用了, php代码很多地方都可以利用这些high order function  
+这里就是一些最基本的使用了, php代码很多地方都可以利用这些higher order function  
 
 
 
