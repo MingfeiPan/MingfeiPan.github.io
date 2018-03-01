@@ -4,3 +4,153 @@ title: urllib, urlib2, request
 category: python
 tag : python
 ---
+
+### urllib  
+
+最近从新捡起了python, 因为公司的特殊项目php不太合适, 很早之前上一家公司用python2.7做过项目, 现在重新要适应一下python3.6了  
+
+以前一直用url都觉得很烦, 需要结合urllib, urllib2共同使用, python3的好消息是这两个终于合并了, 统一为[urlib](https://github.com/python/cpython/tree/3.6/Lib/urllib/), 其下包括request, response, parse, error等几个文件  
+
+request来处理客户端请求, response来处理响应, parse作解析  
+这里有几个例子  
+
+
+#### 简单请求
+
+
+```
+import urllib.request 
+response = urllib.request.urlopen(r'http://www.baidu.com')
+#注意此处所有网络返回都是utf-8字符的bytes格式, 需要decode为str   
+ret = response.read()
+print(ret.decode('utf-8')
+
+```
+
+```
+urllib.request.urlopen(url, data=None, [timeout, ]\*, cafile=None, capath=None, cadefault=False, context=None)
+```
+
+重要参数url, 这里可以接受一个string或者一个Request的对象, 比如我们上面的例子就是接受了一个string的URL地址, 其他参数请参考文档, 不论是哪种协议的请求, urlopen的返回对象总有geturl(), info(), getcode()这三个方法, 二如果是http/https请求还有httpresponse所具有的方法,read(), readinfo(), fileno(), close()等等  
+
+#### 使用Request对象
+我们注意到上面那个url也可以传一个Request对象, 利用Request可以编辑一些头部的信息:    
+
+```
+class urllib.request.Request(url, data=None, headers={}, origin_req_host=None, unverifiable=False, method=None)
+```
+
+```
+url = r'http://www.baidu.com/'
+headers = {
+    'User-Agent': r'Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) '
+                  r'Chrome/45.0.2454.85 Safari/537.36 115Browser/6.0.3',
+    'Referer': r'http://www.baidu.com',
+    'Connection': 'keep-alive'
+}
+req = request.Request(url, headers=headers)
+page = request.urlopen(req).read()
+page = page.decode('utf-8')
+```
+
+#### post请求  
+
+又或者我们想post一条请求, 即需要引入parse文件来处理所携带数据: 
+ 
+```
+import urllib.parse
+import urllib.request
+
+url = r'http://www.baidu.com'
+headers = {
+    'User-Agent': r'Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) '
+                  r'Chrome/45.0.2454.85 Safari/537.36 115Browser/6.0.3',
+    'Referer': r'http://www.baidu.com,
+    'Connection': 'keep-alive'
+}
+data = {
+    'aa': 'AA',
+    'bb': 'BB',
+    'cc': 'CC'
+}
+
+#str(unicode)->bytes(utf-8) encoding
+data = urllib.parse.urlencode(data).encode('utf-8')
+req = urllib.request.Request(url, headers=headers, data=data)
+response = urllib.request.urlopen(req)
+#注意此处所有网络返回都是utf-8字符的bytes格式, 需要decode为str   
+ret = response.read()
+print(ret.decode('utf-8'))
+
+```
+
+注意这里经过一个urlencode方法, 附上提交数据  
+
+
+```
+urllib.parse.urlencode(query, doseq=False, safe='', encoding=None, errors=None, quote_via=quote_plus)
+```  
+
+ 
+#### 异常处理  
+
+```
+import urllib.request
+import urllib.error  
+
+try:
+	response = urllib.request.urlopen(r'http://www.baidu.com')
+	ret = response.read()
+except: urllib.error.URLError as e:
+	print("url error: code %s" % e.reason)
+except: urllib.error.HTTPError as e:
+	print("http error : code %s" % e.code)
+
+print(ret.decode('utf-8')
+
+```
+
+3.6下error这个文件提供3个error:  
+urllib.error.URLError提供reason属性  urllib.error.HTTPError提供code, reason, headers  
+还有urllib.error.ContentTooShortError(msg, content)   
+
+#### 设置代理以及超时  
+
+```
+import urllib.request
+import urllib.error  
+import socket
+
+	timeout = 2
+	socket.setdefaulttimeout(timeout) 
+try:
+	proxy_support = urllib.request.ProxyHandler({'socks5': '127.0.0.1:1080'})
+	opener = urllib.request.build_opener(proxy_support)
+	urllib.request.install_opener(opener)
+	response = urllib.request.urlopen(r'http://www.google.com')
+	ret = response.read()
+except  urllib.error.URLError as e:
+    print("url error: code %s" % e.reason)
+    exit()
+except  urllib.error.HTTPError as e:
+    print("http error : code %s" % e.code)
+    exit()
+
+print(ret.decode('utf-8'))
+
+```
+
+urllib基本功能就是这些, 已经可以满足最基本的需求, 如果要求更高其实我们从2.7就知道有requests这个更好的库可以利用, 连官方文档都有这么一句话  
+*See also The Requests package is recommended for a higher-level HTTP client interface.*  
+
+下一篇再接着看requests吧...
+
+
+
+
+
+
+
+
+
+
