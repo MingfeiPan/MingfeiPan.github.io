@@ -1,6 +1,6 @@
 ---
 layout: post
-title: urllib, urlib2, request
+title: urllib, urlib2, requests
 category: python
 tag : python
 ---
