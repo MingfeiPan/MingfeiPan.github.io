@@ -4,3 +4,107 @@ title: requests
 category: python
 tag : python
 ---
+
+### requests
+
+第三方的高质量http lib, [官方文档](http://docs.python-requests.org/en/master/), [github地址](https://github.com/requests/requests), 好吧这个项目本身有3w个star, 其实进入他的文档, 本身就能看到异同的地方, 比如看他的demo  
+
+```
+import requests
+
+r = requests.get('https://api.github.com', auth=('user', 'pass'))
+
+print(r.status_code)
+print(r.headers['content-type'])
+print(r.text)
+print(r.json())
+
+```  
+
+可以看出很少代码就可以完成一次curl的操作了, 如果之前在python2.7, 相对比结合了urllib2, urllib的代码, requests的简洁会更加明了, 而且功能也强大且齐全, 基本涵盖了日常工作中的所有需求  
+
+post请求  
+
+```
+import requests
+ 
+payload = {'k1': 'v1', 'k2': 'v2'}
+ret = requests.post("http://httpbin.org/post", data=payload)
+print(ret.text)
+print(ret.json())
+```
+
+json data情况下修改header信息的post
+
+```
+import requests
+import json
+
+url = 'https://api.github.com/some/endpoint'
+payload = {'some': 'data'}
+headers = {'content-type': 'application/json'}
+ret = requests.post(url, data=json.dumps(payload), headers=headers)
+print(ret.text)
+
+```
+
+响应结果  
+
+```
+r.text #文本内容  
+r.context #二进制内容  
+r.json() #json内容  
+r.raw    #原始内容  
+```
+
+响应码  
+
+```
+r.status_code
+
+```
+
+响应头  
+
+```
+r.headers #本身结构是一个dict
+r.headers['Content-Type'] #application/json
+```
+
+cookie  
+
+```
+#可以直接把cookie内容加到参数列表 
+cookies = {"mycookie": "data"}
+r = requests.get(url, cookies=cookies)
+print(r.cookies)
+#<RequestsCookieJar[]>
+```
+
+异常, requests的异常都继承自requests.exceptions.RequestException, 包括ConnectionError, HTTPError等等, 用时再查
+
+代理  
+
+```
+import requests
+
+proxies = {
+  "http": "http://127.0.0.1:1080",
+  "https": "http://127.0.0.1:1080",
+}
+
+requests.get("url, proxies=proxies)
+```
+
+其实这里列的都是一些非常基础的内容, 主要想体现requests的简洁性, 并没有体现出他的高级功能
+
+比如这里列的一大串:  
+
+<img src="/img/in-post/pythonrequests.png">
+
+所以使用的时候, 务必配合[官方文档](http://docs.python-requests.org/en/master/), 里面写的真的非常清楚详细了  
+
+
+
+
+
