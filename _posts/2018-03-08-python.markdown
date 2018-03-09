@@ -1,6 +1,6 @@
 ---
 layout: post
-title: unicode and utf-8 in python
+title: unicode & utf-8
 category: python
 tag : python
 ---
@@ -9,7 +9,7 @@ tag : python
 
 <img src="/img/in-post/gun.png">
 
-肉眼无法识别的|,丨, 除非放在一起好吧, 我承认一个长一点一个短一点, 但这个两个确实是完全不同的两个字符, |在ascii字符中十进制124的位置,也就是16进制7c的位置, 一个字节就可以表示, 第二个ascii字符已经表示不出, 在unicode, 看图应该是0x4e28, 在utf-8中是\xe4\xb8\xa8     
+肉眼无法识别的\|,丨, 除非放在一起好吧, 我承认一个长一点一个短一点, 但这个两个确实是完全不同的两个字符, \|在ascii字符中十进制124的位置,也就是16进制7c的位置, 一个字节就可以表示, 第二个ascii字符已经表示不出, 在unicode, 看图应该是0x4e28, 在utf-8中是\xe4\xb8\xa8     
 
 <img src="/img/in-post/unicodegun.png">  
 
