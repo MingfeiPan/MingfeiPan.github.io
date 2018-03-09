@@ -1,0 +1,81 @@
+---
+layout: post
+title: unicode and utf-8 in python
+category: python
+tag : python
+---
+
+这几天广为传播的一张图  
+
+<img src="/img/in-post/gun.png">
+
+肉眼无法识别的|,丨, 除非放在一起好吧, 我承认一个长一点一个短一点, 但这个两个确实是完全不同的两个字符, |在ascii字符中十进制124的位置,也就是16进制7c的位置, 一个字节就可以表示, 第二个ascii字符已经表示不出, 在unicode, 看图应该是0x4e28, 在utf-8中是\xe4\xb8\xa8     
+
+<img src="/img/in-post/unicodegun.png">  
+
+#### ascii, unicode, utf-8的关系  
+
+网络上有很多文章,百科解释这些字符集的内容, 我这里就不赘述了, 简单的说就是程序最开始写的东西都是英文, 只用ascii一个字节就够了, 其实还富裕, 后来全世界的文字都要表示, 8位256个就不够了, 于是出现了unicode双字节16位, 个别特殊的要4字节来表示, 但是我们日常中99%的代码全是英文内容, 全都用unicode来存也太亏了, 所以又出现了可变字长的utf-8, 用单字节表示那些最常见的字符, 多字节表示生僻字  
+
+#### python3中的字符  
+
+我们知道python3中str是统一使用unicode编码的, 这样处理字符的时候不容易出现乱码, 默认的我们会把str按其他字符比如utf-8写成bytes用于网络传输或者文件存储以达成节省空间的目的, 我们可以通过encode来展示我们想要的各种字符编码  
+
+```
+>>> '丨'.encode('utf-8')
+b'\xe4\xb8\xa8'
+>>> '丨'.encode('unicode_escape')
+b'\\u4e28'
+```
+
+其实我说了这么多, 只想记录下面这部分内容, 也就是unicode到utf-8的转换, 手动的转换  
+
+就拿丨来做实验好了, 基本规则如下  
+
+<img src="/img/in-post/unicode2utf-8.png">  
+
+```
+#列出丨的unicode
+0x4e28 
+#转为二进制
+0100 1110 0010 1000
+#按照规则补全到utf-8, 0x4e28介于0x800到0xffff之前, 所以丨的utf-8编码应该是三个字节  
+#括号内的为额外补充的bit
+(1110) 0100 (10)11 1000 (10)10 1000
+#转化为十六进制方便查看
+0xe 0x4 0xb 0x8 0xa 0x8
+#hooray, 就是我们之前打印的utf-8编码
+b'\xe4\xb8\xa8'  
+
+```
+
+在go语言打印时, 有一点小发现:
+
+```
+package main
+
+import "fmt"
+
+func main(){
+	fmt.Println("丨")
+	fmt.Println([]byte("丨"))
+	fmt.Println([]rune("丨"))
+}
+
+丨
+[228 184 168]
+[20008]
+
+```
+
+go的byte会时按照字节打印, 这里打印了按照utf-8编码的3个字节
+而下面的rune格式, 则是打印了按照unicode的编码打印了2个字符也就是十六进制数0x4e28的十进制表示20008  
+
+原因写在下面:  
+*在Go语言中支持两个字符类型, 一个是 byte （实际上是 uint8 的别名）, 代表UTF-8字符串的单个字节的值, 
+另一个是 rune, 代表单个Unicode字符, 出于简化语言的考虑, Go语言的多数API都假设字符串为UTF-8编码, 
+尽管Unicode字符在标准库中有支持, 但实际上较少使用*
+
+
+
+
