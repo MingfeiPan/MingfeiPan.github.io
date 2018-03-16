@@ -1,0 +1,125 @@
+---
+layout: post
+title: python socket recv的一次debug
+category: python
+tag : python
+---
+
+工作中遇到的一个问题, python socket recv发来的数据包, 包本身内容每次都被截断, 但是recv的数据长度, 既不符合mtu1500的标准, 也不符合mtu576的标准  
+
+```
+bufsize = 1024
+while True:
+	buf = conn.recv(bufsize)
+	if not buf:
+		break		
+	text += buf
+	
+```
+
+形如大致类似的代码, conn是一个socket fd, 非常奇怪的现象是使用我司app发请求做代理时, 截取的buf是截断的: 
+
+```
+b'POST /teacher/index/getunchecklist HTTP/1.1\r\nContent-Type: application/x-www-form-urlencoded\r\nContent-Length: 201\r\nHost: 192.168.1.232:8080\r\nConnection: Keep-Alive\r\nAccept-Encoding: gzip\r\nUser-Agent: okhttp/3.6.0\r\n\r\n'
+216
+b'uid=4724&os=android&v=1.5&driverCode=1.2.0&token=4NDcyNCMjMTAyNzAwNTQjIzU4MmRmMDc2MjAzOWU4NGI0MGQ3NzQyODNiMDE0YjkzIyMzNGNmMWNjZDI1MmJmZGI1MGZhY2E4Njg4YThlODMxNSMjMTUyMzc4NTA0MiMjMiMjMQ%3D%3DH&osv=4.4.2'
+201
+```
+
+而我自己去发这条post并不会出现:
+
+```
+b'POST /teacher/index/getunchecklist HTTP/1.1\r\nHOST: 192.168.1.232:8080\r\ncontent-type: application/x-www-form-urlencoded\r\nconnection: keep-alive\r\naccept-encoding: gzip\r\nuser-agent: okhttp/3.6.0\r\ncontent-length: 201\r\n\r\nuid=4724&os=android&v=1.5&driverCode=1.2.0&token=4NDcyNCMjMTAyNzAwNTQjIzU4MmRmMDc2MjAzOWU4NGI0MGQ3NzQyODNiMDE0YjkzIyMzNGNmMWNjZDI1MmJmZGI1MGZhY2E4Njg4YThlODMxNSMjMTUyMzc4NTA0MiMjMiMjMQ%3D%3DH&osv=4.4.2'
+417
+
+```
+
+可以看到上面 216+201 就算加上tcp ip 还有其他报文格式的头部仍旧没有达到mtu限制, 但是这里却分成了两个包来发, 我自己的post就是一个包发来了, 当时遇到后其实还是想了一下觉得很奇怪, 因为不管是接口的功能还是用charles这种代理工具去看, 都是一条请求
+
+最后, 借助抓包工具了, tcpdump, 设置条件'tcp dst port 8080', 抓取到我这个http服务器的所有数据, 果然在这里确实能看到区别  
+
+```
+17:53:46.722508 IP 192.168.1.197.61488 > 192.168.1.232.8080: Flags [P.], seq 0:216, ack 1, win 8192, length 216
+	0x0000:  000c 29c6 8c78 f0b4 298d 5c5a 0800 4500  ..)..x..).\Z..E.
+	0x0010:  0100 c91f 4000 3f06 ecda c0a8 01c5 c0a8  ....@.?.........
+	0x0020:  01e8 f030 1f90 24ba c8ae 46f6 82ad 5018  ...0..$...F...P.
+	0x0030:  2000 9277 0000 504f 5354 202f 7465 6163  ...w..POST./teac
+	0x0040:  6865 722f 696e 6465 782f 6765 7475 6e63  her/index/getunc
+	0x0050:  6865 636b 6c69 7374 2048 5454 502f 312e  hecklist.HTTP/1.
+	0x0060:  310d 0a43 6f6e 7465 6e74 2d54 7970 653a  1..Content-Type:
+	0x0070:  2061 7070 6c69 6361 7469 6f6e 2f78 2d77  .application/x-w
+	0x0080:  7777 2d66 6f72 6d2d 7572 6c65 6e63 6f64  ww-form-urlencod
+	0x0090:  6564 0d0a 436f 6e74 656e 742d 4c65 6e67  ed..Content-Leng
+	0x00a0:  7468 3a20 3230 310d 0a48 6f73 743a 2031  th:.201..Host:.1
+	0x00b0:  3932 2e31 3638 2e31 2e32 3332 3a38 3038  92.168.1.232:808
+	0x00c0:  300d 0a43 6f6e 6e65 6374 696f 6e3a 204b  0..Connection:.K
+	0x00d0:  6565 702d 416c 6976 650d 0a41 6363 6570  eep-Alive..Accep
+	0x00e0:  742d 456e 636f 6469 6e67 3a20 677a 6970  t-Encoding:.gzip
+	0x00f0:  0d0a 5573 6572 2d41 6765 6e74 3a20 6f6b  ..User-Agent:.ok
+	0x0100:  6874 7470 2f33 2e36 2e30 0d0a 0d0a       http/3.6.0....
+17:53:46.723214 IP 192.168.1.197.61488 > 192.168.1.232.8080: Flags [P.], seq 216:222, ack 1, win 8192, length 6
+	0x0000:  000c 29c6 8c78 f0b4 298d 5c5a 0800 4500  ..)..x..).\Z..E.
+	0x0010:  002e a9ca 4000 3f06 0d02 c0a8 01c5 c0a8  ....@.?.........
+	0x0020:  01e8 f030 1f90 24ba c986 46f6 82ad 5018  ...0..$...F...P.
+	0x0030:  2000 3545 0000 7569 643d 3437            ..5E..uid=47
+17:53:46.726025 IP 192.168.1.197.61488 > 192.168.1.232.8080: Flags [P.], seq 222:417, ack 1, win 8192, length 195
+	0x0000:  000c 29c6 8c78 f0b4 298d 5c5a 0800 4500  ..)..x..).\Z..E.
+	0x0010:  00eb c847 4000 3f06 edc7 c0a8 01c5 c0a8  ...G@.?.........
+	0x0020:  01e8 f030 1f90 24ba c98c 46f6 82ad 5018  ...0..$...F...P.
+	0x0030:  2000 d7e8 0000 3234 266f 733d 616e 6472  ......24&os=andr
+	0x0040:  6f69 6426 763d 312e 3526 6472 6976 6572  oid&v=1.5&driver
+	0x0050:  436f 6465 3d31 2e32 2e30 2674 6f6b 656e  Code=1.2.0&token
+	0x0060:  3d63 4e44 6379 4e43 4d6a 4d54 4179 4e7a  =cNDcyNCMjMTAyNz
+	0x0070:  4177 4e54 516a 497a 5534 4d6d 526d 4d44  AwNTQjIzU4MmRmMD
+	0x0080:  6332 4d6a 417a 4f57 5534 4e47 4930 4d47  c2MjAzOWU4NGI0MG
+	0x0090:  5133 4e7a 5179 4f44 4e69 4d44 4530 596a  Q3NzQyODNiMDE0Yj
+	0x00a0:  6b7a 4979 4d7a 4e47 4e6d 4d57 4e6a 5a44  kzIyMzNGNmMWNjZD
+	0x00b0:  4931 4d6d 4a6d 5a47 4931 4d47 5a68 5932  I1MmJmZGI1MGZhY2
+	0x00c0:  4534 4e6a 6734 5954 686c 4f44 4d78 4e53  E4Njg4YThlODMxNS
+	0x00d0:  4d6a 4d54 5579 4d7a 6334 4e54 6b33 4d53  MjMTUyMzc4NTk3MS
+	0x00e0:  4d6a 4d69 4d6a 4d51 2533 4425 3344 3126  MjMiMjMQ%3D%3D1&
+	0x00f0:  6f73 763d 342e 342e 32                   osv=4.4.2
+
+```
+
+可以看到这里分成了3个包  
+
+```
+17:59:21.527214 IP 192.168.1.197.61567 > 192.168.1.232.8080: Flags [P.], seq 0:417, ack 1, win 8192, length 417
+	0x0000:  000c 29c6 8c78 f0b4 298d 5c5a 0800 4500  ..)..x..).\Z..E.
+	0x0010:  01c9 b7ea 4000 3f06 fd46 c0a8 01c5 c0a8  ....@.?..F......
+	0x0020:  01e8 f07f 1f90 ac69 c1d0 50b4 2fb0 5018  .......i..P./.P.
+	0x0030:  2000 bcca 0000 504f 5354 202f 7465 6163  ......POST./teac
+	0x0040:  6865 722f 696e 6465 782f 6765 7475 6e63  her/index/getunc
+	0x0050:  6865 636b 6c69 7374 2048 5454 502f 312e  hecklist.HTTP/1.
+	0x0060:  310d 0a48 4f53 543a 2031 3932 2e31 3638  1..HOST:.192.168
+	0x0070:  2e31 2e32 3332 3a38 3038 300d 0a63 6f6e  .1.232:8080..con
+	0x0080:  7465 6e74 2d74 7970 653a 2061 7070 6c69  tent-type:.appli
+	0x0090:  6361 7469 6f6e 2f78 2d77 7777 2d66 6f72  cation/x-www-for
+	0x00a0:  6d2d 7572 6c65 6e63 6f64 6564 0d0a 636f  m-urlencoded..co
+	0x00b0:  6e6e 6563 7469 6f6e 3a20 6b65 6570 2d61  nnection:.keep-a
+	0x00c0:  6c69 7665 0d0a 6163 6365 7074 2d65 6e63  live..accept-enc
+	0x00d0:  6f64 696e 673a 2067 7a69 700d 0a75 7365  oding:.gzip..use
+	0x00e0:  722d 6167 656e 743a 206f 6b68 7474 702f  r-agent:.okhttp/
+	0x00f0:  332e 362e 300d 0a63 6f6e 7465 6e74 2d6c  3.6.0..content-l
+	0x0100:  656e 6774 683a 2032 3031 0d0a 0d0a 7569  ength:.201....ui
+	0x0110:  643d 3437 3234 266f 733d 616e 6472 6f69  d=4724&os=androi
+	0x0120:  6426 763d 312e 3526 6472 6976 6572 436f  d&v=1.5&driverCo
+	0x0130:  6465 3d31 2e32 2e30 2674 6f6b 656e 3d34  de=1.2.0&token=4
+	0x0140:  4e44 6379 4e43 4d6a 4d54 4179 4e7a 4177  NDcyNCMjMTAyNzAw
+	0x0150:  4e54 516a 497a 5534 4d6d 526d 4d44 6332  NTQjIzU4MmRmMDc2
+	0x0160:  4d6a 417a 4f57 5534 4e47 4930 4d47 5133  MjAzOWU4NGI0MGQ3
+	0x0170:  4e7a 5179 4f44 4e69 4d44 4530 596a 6b7a  NzQyODNiMDE0Yjkz
+	0x0180:  4979 4d7a 4e47 4e6d 4d57 4e6a 5a44 4931  IyMzNGNmMWNjZDI1
+	0x0190:  4d6d 4a6d 5a47 4931 4d47 5a68 5932 4534  MmJmZGI1MGZhY2E4
+	0x01a0:  4e6a 6734 5954 686c 4f44 4d78 4e53 4d6a  Njg4YThlODMxNSMj
+	0x01b0:  4d54 5579 4d7a 6334 4e54 4130 4d69 4d6a  MTUyMzc4NTA0MiMj
+	0x01c0:  4d69 4d6a 4d51 2533 4425 3344 4826 6f73  MiMjMQ%3D%3DH&os
+	0x01d0:  763d 342e 342e 32                        v=4.4.2
+```
+
+而我的post只是一个单独的包, 其实这个问题看起来非常基础, 看一些tcp的知识就能知道了, 只是当时遇到的时候没想到去看抓包, 而是看了代理的请求, 然而代理抓的包已经是http的包了, 所以必然处理了tcp的格式, 也就看不到tcp是否出现了截断
+
+tips:  
+`把tcpdump当日常工具用起来`
+
