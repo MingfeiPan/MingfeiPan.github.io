@@ -1,27 +1,78 @@
 ---
 layout: post
-title: socket recv 截断的一些处理
+title: [翻译]Nobody understands the GIL(1)
 category: python
 tag : python
 ---
 
-其实这个话题, 应该不局限于python, 本身python的socket函数很多都是来自os的系统调用, 所以跟c中使用的并没有什么特别大的区别, recv截断的问题在哪里都有, 现实中局限于mtu的问题, 一个包穿不完的情况非常常见, 就算是http协议, 很难出现数据包大小超过mtu需要分包的情况, 仍旧会有程序自身处理时主动出现的分包传输, 比如我上一篇中遇到的问题  
 
-同步的recv, 如果本次socket在recv后就可以关闭, 那其实可以通过新接收的buf是否为空来判断  
+有大佬推荐的一片关于GIL的文章, 其实GIL算是cpython的一个软肋, 也有人叫做鸡肋(其实鸡肋也并不完全, 因为就算有GIL在IO密集型下python还是可以利用多线程提升效率, 而CPU密集型的话, 你早就该去用c了不是吗), 这边文章非常仔细的做了解释, 包括了一些涉及到的概念, 当然这篇文章是在ruby的角度去写的, 但其实跟python的GIL都是一个东西, 所以写python的老哥应该也是可以看的(我本身没写过一行ruby, 也看的明白)
+
+原文在这里[Nobody understands the GIL](https://www.jstorimer.com/blogs/workingwithcode/8085491-nobody-understands-the-gil)  
+
+##### 没有人了解GIL    
+
+尽管我在ruby社区混了这么久, 对我来说, MRI(Matz's Ruby Interpreter, 也被称作cruby, ruby语言解释器, 译者注)那名声很烂的GIL一直都是一个难以捉摸的生物。所以这是一个关于线程安全与最终抓到这只生物得以好好观察的故事。  
+
+我第一次听说GIL的时候, 根本就不知道这是什么玩意, 怎么运作, 为什么存在什么的。 我只知道他很蠢因为他限制并行, 又或者说他很棒因为可以让我的代码线程安全, 过了一阵之后, 当我适应了多线程编程之后, 才发现其实这复杂的多。  
+
+我想知道GIL的底层设计实现原理, 然而, 我并没找到GIL的任何说明书, 亦或是文档, 他本质上是一种未指明的行为, 是MRI的实现细节, ruby内核的人也没有对他如何工作作出过说明  
+
+但是在我了解GIL之前, 也许还有一些准备工作要做  
+
+`如果你真的完全不了解GIL, 我这有一个大概半分钟的解释`  
+>MRI有个组件叫全局中断锁(global interpreter lock, GIL), 这是一个围绕在ruby代码执行过程中的锁, 这表示在一个多线程的上下文环境中, 同一时间只能有一个线程在执行ruby代码  
+
+>所以如果你有8个线程工作在一个8核的机器上, 任一时间也只能有一个线程跟一个核在工作, GIL的存在保护了ruby内部从而不因为竞争而损坏数据。 这里还有一些警告跟优化的内容, 但是上面说的大概总结了  
+
+
+#### 问题  
+早在2008年, Ilya Grigorik给了一篇高层次理解GIL的文章[Parallelism is a Myth in Ruby](https://www.igvita.com/2008/11/13/concurrency-is-a-myth-in-ruby/), 尽管我学了很多ruby的多线程编程, 只有高层次的理解的话还有些问题。 干, 我最近也写了一本书[a book about multi-threading in Ruby](https://www.jstorimer.com/products/working-with-ruby-threads)(这他妈都能写本书, 你是真的叼, 译者加), 这里面就是我对GIL的全部理解了。  
+
+问题是只有这些高层次的理解我并不能回答底层技术的问题。 我想知道ruby运行时的GIL是否提供了某种线程安全的保证, 我们先验证一下。  
+
+#### 数组追加不是线程安全的  
+ruby其实很少东西是线程安全的, 比如数组追加   
 
 ```
-#socket断连后会一直返回空字符串  
-while True:
-    buf = conn.recv(1024)
-    print(buf)
-    print(len(buf))
-    if not buf:
-        logging.info("we break")
-        break
+array = []
+
+5.times.map do
+  Thread.new do
+    1000.times do
+      array << nil
+    end
+  end
+end.each(&:join)
+
+puts array.size
 ```
 
-在我这次处理http的时候, 因为同一个socket conn要接收后处理数据再发送回去, 必然不能在中途就断掉, 表现在recv就会阻塞, 数据明明已经读完了, 缺不能break出, 所以需要一些别的方法, 通常的可以利用传输字符串的尾字符确认, 或者利用传输的字符内容所属于的协议来处理  
+这里5个线程公用一个数组对象, 每个线程往数组中加入nil值1000次。 所以结束时, 数组里应该有5000个元素, 对吧?  
 
-还是拿http协议举例子, get请求在\r\n\r\n之后就传输结束了, 这种情况用字符串匹配完全可以判断截断, post请求时, 以\r\n\r\n两个换行符划分header跟body内容, 而body内容的长度在header里保存在Content-Length中, 通过长度也可以做到精确控制  
+```
+$ ruby pushing_nil.rb
+5000
+
+$ jruby pushing_nil.rb
+4446
+
+$ rbx pushing_nil.rb
+3088
+```
+:(, 甚至这种小实验都暴露了ruby的非线程安全, 或者说这里真的发生了什么呢?  
+
+我们注意到MRI给出了正确的结果, 5000, 而JRuby跟Rubinuis则不是。 如果你再执行一次, 你可能会看到MRI还是范围了正确的结果, 而JRuby跟Rubinuis给出了与上次不同的错误答案。  
+
+这些不一致的结果就是因为GIL。 因为MRI有GIL, 尽管有5个线程在同时运行, 但同一时间只有一个被激活的线程, 换句话说, 他们不是真正并行的。 而JRuby跟Rubinius这两个解释器则没有GIL, 所以当你有5个线程在执行时, 你确实有5个线程在可用的核上并行执行。  
+
+在多线程的ruby程序中, 5个线程的执行是非线程安全的, 他们会互相破坏对方的数据, 并最终影响到整个数据。 
+
+未完待续...
+
+
+
+
+
 
 

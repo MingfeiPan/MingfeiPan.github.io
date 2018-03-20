@@ -120,6 +120,27 @@ b'POST /teacher/index/getunchecklist HTTP/1.1\r\nHOST: 192.168.1.232:8080\r\ncon
 
 而我的post只是一个单独的包, 其实这个问题看起来非常基础, 看一些tcp的知识就能知道了, 只是当时遇到的时候没想到去看抓包, 而是看了代理的请求, 然而代理抓的包已经是http的包了, 所以必然处理了tcp的格式, 也就看不到tcp是否出现了截断
 
+#### recv 截断  
+
+附带在这次debug中发现的一些东西, 其实这个话题, 应该不局限于python, 本身python的socket函数很多都是来自os的系统调用, 所以跟c中使用的并没有什么特别大的区别, recv截断的问题在哪里都有, 现实中局限于mtu的问题, 一个包穿不完的情况非常常见, 就算是http协议, 很难出现数据包大小超过mtu需要分包的情况, 仍旧会有程序自身处理时主动出现的分包传输, 比如我上一篇中遇到的问题  
+
+同步的recv, 如果本次socket在recv后就可以关闭, 那其实可以通过新接收的buf是否为空来判断  
+
+```
+#socket断连后会一直返回空字符串  
+while True:
+    buf = conn.recv(1024)
+    print(buf)
+    print(len(buf))
+    if not buf:
+        logging.info("we break")
+        break
+```
+
+在我这次处理http的时候, 因为同一个socket conn要接收后处理数据再发送回去, 必然不能在中途就断掉, 表现在recv就会阻塞, 数据明明已经读完了, 缺不能break出, 所以需要一些别的方法, 通常的可以利用传输字符串的尾字符确认, 或者利用传输的字符内容所属于的协议来处理  
+
+还是拿http协议举例子, get请求在\r\n\r\n之后就传输结束了, 这种情况用字符串匹配完全可以判断截断, post请求时, 以\r\n\r\n两个换行符划分header跟body内容, 而body内容的长度在header里保存在Content-Length中, 通过长度也可以做到精确控制  
+
 tips:  
 `把tcpdump当日常工具用起来`
 
