@@ -1,6 +1,6 @@
 ---
 layout: post
-title: [翻译]Nobody understands the GIL(1)
+title: 【翻译】Nobody understands the GIL(1)
 category: python
 tag : python
 ---
