@@ -6,9 +6,13 @@ tag : python
 --- 
 
 
-继续学习python, 接触到了python的多线程应用, 之前对线程的学习都是在linux下完成的, 通过c语言的pthread, 就我所学到的语言中线程的实现貌似都是通过posix下的pthread, php通过pthread扩展, python也是通过pthread.h(起码cpython是的), 其实这也是很显然的php跟cpython都是c写的(...也没有再深究过其他语言)  
+继续学习python, 接触到了python的多线程, 之前对线程的学习都是在linux下完成的, 通过c语言的pthread, 就我所学到的语言中线程的实现貌似都是通过posix下的pthread, php通过pthread扩展, python也是通过pthread.h(起码cpython是的), 其实这也是很显然的php跟cpython都是c写的(...老实说也没有再深究过其他语言)  
 
-通常聊起python的多线程, 一般会使用[thread](https://github.com/python/cpython/blob/3.6/Lib/_dummy_thread.py/)(或者叫做_thread或者叫做_dummy_thread)或者[threading](https://github.com/python/cpython/blob/3.6/Lib/threading.py/), _thread中调用一般start_new_thread()方法, threading中会有run(), start(), join()等等这些线程模型中用到的方法, 回头想想 这里可能是最先产生疑问的地方  
+通常聊起python的多线程, 一般会使用[_thread](https://github.com/python/cpython/blob/3.6/Lib/_dummy_thread.py/)(或者叫做thread或者叫做_dummy_thread)或者[threading](https://github.com/python/cpython/blob/3.6/Lib/threading.py/)这两个模块, 官方文档用这样一句话形容这两个模块的区别    
+
+>This module(threading) constructs higher-level threading interfaces on top of the lower level _thread module  
+
+我想这表达的非常明确了, 具体地, _thread中调用一般start_new_thread()方法, threading中会有run(), start(), join()等等这些线程模型中用到的方法, 回头想想, 这里可能是我最先产生疑问的地方  
 
 pthread的描述中, 线程在被create之后, 调用线程通过join阻塞一直阻塞, 直到join中的线程退出, 调用线程通过join可以回收资源, 并且可以通过thread_return拿到线程的返回值    
 
