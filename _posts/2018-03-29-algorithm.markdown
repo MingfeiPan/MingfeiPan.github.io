@@ -30,7 +30,7 @@ tag : algorithm
 #### lcs  
 从一到最简单的动归题分析一下, lcs, 有最长公共子序列(Longest Common Subsequence)跟最长公共子串(Longest Common Substring)两个问题可以描述  
 
-##### 最长公共子序列  
+#### 最长公共子序列  
 比较x=abccabe,y=abcdabf这两个字符串, abb, abca都是x与y的一个子序列, 而abcab是x与y的一个lcs, 也就是最长公共子序列, 可以看出如果暴力搜索去找lcs, 时间复杂度是指数级别的  
 
 设x为s1的下标, y为s2的下标, 我们可以定义lcs(x,y)为问题中的一个状态, 其含义表示以s1[x]与s2[y]结尾的最长公共子串, 可以看出lcs(x-1,y)就是lcs(x,y)之前的一个状态, 如果s1[x] == s2[y] 那么lcs(x,y) = lcs(x-1, y-1) + 1, 这个状态并不难找  
