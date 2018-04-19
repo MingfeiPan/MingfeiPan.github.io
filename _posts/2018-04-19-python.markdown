@@ -94,9 +94,11 @@ func2 locals after  {'a': 1, 'x': [2, 2]}
 
 ```
 
-对于一个list来说, 改变其中某个值的内容, 并不是对list本身做了赋值操作, 所以这里的x[0]可以从容的现在locals找不到, 再去外层找到, 找到之后再添加到locals里
+对于一个list来说, 改变其中某个值的内容, 并不是对list本身做了赋值操作, 所以这里的x[0]的赋值就不会让locals()产生一个x的变量, 所以程序回再去外层enclosing中寻找, 找到之后顺利使用  
 
-ps, 这里顺便提一句, 如果外层函数要使用内层函数的变量, 也就是我们想写一个闭包的时候  
+#### 闭包
+
+那么如果外层函数要使用内层函数的变量, 其实也就是我们想写一个闭包的时候  
 
 ```
 def createCounter():
@@ -107,7 +109,7 @@ def createCounter():
     return counter
 ```
 
-直接用的话也会遇到上面的问题, 这里可以用一个nonlocal的关键字来处理  
+直接用的话也会遇到上面的问题 UnboundLocalError: local variable 'i' referenced before assignment, 这里python3有一个优雅的办法, 用一个nonlocal的关键字来处理  
 
 ```
 def createCounter():
