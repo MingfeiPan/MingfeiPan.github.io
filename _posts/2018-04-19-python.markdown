@@ -1,0 +1,149 @@
+---
+layout: post
+title: python命名空间的一些笔记
+category: python
+tag : python
+--- 
+
+起源是一段代码, 准确的说是两段 
+
+```
+def func1():
+    x = 1
+    def func2():
+        a = 1
+        print('func2 locals ', locals())
+        a += x
+    func2()
+
+
+if __name__ == '__main__':
+    func1()
+    
+func2 locals before  {'a': 1, 'x': 1}
+func2 locals after  {'a': 2, 'x': 1}
+
+```
+
+```
+def func1():
+    x = 1
+    def func2():
+        a = 1
+        print('func2 locals before ', locals())
+        x += x
+        print('func2 locals after ', locals())
+    func2()
+
+
+if __name__ == '__main__':
+    func1()
+    
+func2 locals before  {'a': 1}
+Traceback (most recent call last):
+  File "localglobaltest.py", line 21, in <module>
+    func1()
+  File "localglobaltest.py", line 17, in func1
+    func2()
+  File "localglobaltest.py", line 15, in func2
+    x += x
+UnboundLocalError: local variable 'x' referenced before assignment
+```
+
+一个正常输出了locals(), 另一个则报错, 而且locals()中少了x的信息, 原因在于python的名字空间以及赋值机制, 这里直观的感觉就是, 如果使用x的值是可以的, 但是想给x赋新值, 就会有问题, 我们先看python的名字空间  
+
+#### 名字空间  
+
+python内的名字空间一共有4种, LEGB:  
+>locals, 函数内部, 包含函数内的局部变量以及形参  
+>enclosing, 在嵌套函数中外部函数的名字空间, 典型的比如闭包  
+>globals, 模块空间  
+> \_\_builtins__, 内置模块的名字空间  
+
+当程序要使用某个变量时, 会依次按照LEGB的顺序检索, 找到就使用, 找不到抛出NameError, 特殊地, 如果是在enclosing中找到的, 还会把这个变量也加到locals的名字空间中(globals中找到的则不会加)  
+
+而每个名字空间也有自己的生存周期:  
+>\_\_builtins__, 在python解释器启动时创建, 退出时销毁  
+>globals, 在模块定义被读入时创建, 解释器退出时销毁  
+>locals, 在函数调用时创建, 直到函数退出或异常时销毁  
+
+#### 赋值  
+
+我们知道python是传引用的, 赋值时, 如果对象存在, 就只是把当前变量加到当前命名空间并指向该对象, 对象并不会拷贝, 而如果赋新值的话则会新建对象使变量指向新的对象, 而我们知道如果是list或者dict这种可变变量的话, 改变list中某个数的值并不会改变list本身指向的对象, 只有改变list自身的时候才会发生自身指向的变动    
+
+所以其实在之前的第二种情况的例子里, 到python执行到x += x时, 发现了赋值语句, 于是就把x加到当前的命名空间里, 但是这里赋值又要用python, 于是去locals里查找, 结果此时locals里确实有x这个变量, 然而他却没有值, 所以这里会报错, UnboundLocalError: local variable 'x' referenced before assignment, 第一种情况我们只是取x的值, 那么locals中就没有, 当到enclosing中找到之后, 就顺利的使用了  
+
+这里还有一个例子  
+
+```
+def func1():
+    x = [1,2]
+    def func2():
+        a = 1
+        print('func2 locals before ', locals())
+        x[0] += x[0]
+        print('func2 locals after ', locals())
+    func2()
+
+
+if __name__ == '__main__':
+    func1()
+    
+func2 locals before  {'a': 1, 'x': [1, 2]}
+func2 locals after  {'a': 1, 'x': [2, 2]}
+
+```
+
+对于一个list来说, 改变其中某个值的内容, 并不是对list本身做了赋值操作, 所以这里的x[0]可以从容的现在locals找不到, 再去外层找到, 找到之后再添加到locals里
+
+ps, 这里顺便提一句, 如果外层函数要使用内层函数的变量, 也就是我们想写一个闭包的时候  
+
+```
+def createCounter():
+    i = 0
+    def counter():
+        i += 1
+        return i
+    return counter
+```
+
+直接用的话也会遇到上面的问题, 这里可以用一个nonlocal的关键字来处理  
+
+```
+def createCounter():
+    i = 0
+    def counter():
+        nonlocal i
+        i += 1
+        return i
+    return counter
+```
+
+#### nonlocal, global
+
+顺便比较一下global关键字跟nonlocal关键字, 一句话说global可以让局部函数使用到当前模块全局命名空间globals()的变量, 而nonlocal则是作用于enclosing的部分, 他的涵盖范围是从当前的范围直到模块全局的范围(不包括模块全局本身), 如果找到就引用这个名字和他的对象, 如果要赋值, 就会改变外层的这个名字的绑定对象(闭包的利用点, global关键字也会), nonlocal语句声明的变量不会在当前locals()的命名空间中增加, 此外, 使用global关键字修饰的变量之前可以并不存在, 而使用nonlocal关键字修饰的变量在嵌套作用域中必须已经存在, 看下面例子    
+
+```
+#nonlocal
+def createCounter():
+    i = 0
+    def counter():
+        nonlocal i
+        i += 1
+        return i
+    return counter
+```
+
+```
+#global
+i = 0
+def createCounter():
+    def counter():
+        global i
+        i += 1
+        return i
+    return counter
+```
+
+完全是根据i的位置区分的所使用关键字的  
+
