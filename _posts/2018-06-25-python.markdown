@@ -1,0 +1,44 @@
+---
+layout: post
+title:  yield的一些笔记
+category: python
+tag : python
+--- 
+ 
+### 前言  
+
+最近一直在看fluent python, 这本书详细描述了python coroutine的相关信息, 从yield一直到aiohttp。 这里记录一些笔记  
+
+python协程大致发展了数个阶段:  
+
+>[PEP-255](https://www.python.org/dev/peps/pep-0255/), python2.2引入yield关键字来创建生成器    
+>[PEP-342](https://www.python.org/dev/peps/pep-0342/), python2.5增强了yield generator的功能, 使之可以作为协程    
+>[PEP-380](https://legacy.python.org/dev/peps/pep-0380/), python3.4引入@asyncio.coroutine与yield from      
+>[PEP-492](https://www.python.org/dev/peps/pep-0492/), python3.5单独给出了协程关键字async/await, 相当于彻底区分了协程与生成器  
+
+### yield  
+
+先从yield说起。[PEP-255]((https://www.python.org/dev/peps/pep-0255/))建立的时间是18-May-2001,(卧槽我那会应该才小学3年级), 这个PEP单纯的提出了新的关键字yield, 使用yield的方法即为生成器, 个人感觉这个更多的是一种对迭代器的改进, PEP中这样描述:  
+`provide a kind of function that can return an intermediate result ("the next value") to its caller, but maintaining the function's local state so that the function can be resumed again right where it left off`  
+
+相比迭代器直接在内存中生成本次迭代的所有数据, 生成器每次只返回一个结果(the next value), 然后会维持当前的函数的相关上下文直到再次被调用(resumed)。因为不是一次得到整个迭代序列, 所以对内存的需求很低, 可以用来迭代较大的对象乃至无限长对象(python3中 range已经改用生成器实现)。如果我们把迭代器模型堪称一个消费者/生产者模型, 那么这里的生产者只是在按次序给出下一个值。放到生成器这里, 我们可以更精细的控制生产者的产出, 类似迭代次数, 产出条件。 
+
+```
+def fib():
+    a, b = 0, 1
+    while True:
+       yield b
+       a, b = b, a+b
+
+f = fib()
+for i in range(100):
+	print(next(f))
+
+```  
+
+这里是一段利用生成器产生斐波那契数列的程序, fib是一个生成器函数, 调用fib不会执行其内部的代码, 而是会产生一个生成器对象f, 这是一个可迭代对象, 对他调用next()方法, 生成器对象就会开始执行, 直到遇到下一个yield或者return语句。
+
+到PEP-255, 生成器对象就只有next()这一种调用方式, 生成器函数中也不允许有try/finally, return的效果基本等同于生成器执行到结尾, 也就是抛出StopIteration异常, 这大致就是PEP-255给出的生成器定义, 可以看出需要丰富的东西还有很多, 我感觉这里生成器取代一些迭代器的用途更重一些, 后续python中很多库函数都是生成器实现的(书里提到了os.walk)。
+
+
+
