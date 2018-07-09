@@ -1,13 +1,13 @@
 ---
 layout: post
-title:  yield的一些笔记
+title:  python协程的一些笔记
 category: python
 tag : python
 --- 
  
 ### 前言  
 
-最近一直在看fluent python, 这本书里很详细的描述了python coroutine的相关信息, 从yield一直到aiohttp, 跨越了python2.2到python3.5。   
+之前看过不少python相关的书籍, 有内容很好的也有内容很敷衍的, 不管是哪一类, 对python协程的介绍都很少, 有一些会提到yield生成器的相关内容, 但是对于python3之后协程的发展, 介绍非常少(就连David Beazley非常著名的那本python cookbook也是这样)。直到最近看到的了《fluent python》,这本书最独特的内容就是对python协程做了细致的分析, 从yield一直到分析到aiohttp, 跨越了python2.2到python3.4。由于这本书在15年出版, 因为时间关系无法对PEP492中提出的async/await语法做太多介绍, 但是也细致分析了yield以及yield from并在很地方都提到了在当时已经被提出了async/await syntax, 包括了通信的邮件, python社区大佬做的pyCon演讲, 可以说这本书非常用心了。这里结合书上的描述, 记录一些python协程发展相关的内容。  
 
 python协程大致发展了数个阶段:  
 
@@ -18,7 +18,7 @@ python协程大致发展了数个阶段:
 
 ### yield  
 
-先从yield说起。[PEP-255]((https://www.python.org/dev/peps/pep-0255/))建立的时间是18-May-2001(卧槽我那会应该才小学3年级), 这个PEP提出了新的关键字yield, 使用yield关键字的函数即为生成器函数, 除了PEP中提到的那些动机, 对迭代器的改进和提升最为明显, PEP中这样描述:  
+先从yield说起。[PEP-255]((https://www.python.org/dev/peps/pep-0255/))建立的时间是18-May-2001(卧槽我那会应该才小学3年级), 可以说非常久远了。这里提出了新的关键字yield, 使用yield关键字的函数即为生成器函数, 详细的内容都在PEP里说的很详细了, 这里整篇内容都没有提到过coroutine的说法, 包括提出的动机中那里, 也只是跟线程做了比较, 我感觉这里提出的生成器, 主要是在对迭代器惊醒改进和提升, PEP中这样描述:  
 
 `provide a kind of function that can return an intermediate result ("the next value") to its caller, but maintaining the function's local state so that the function can be resumed again right where it left off`  
 
@@ -39,7 +39,7 @@ for i in range(100):
 
 这里是一段利用生成器产生斐波那契数列的程序, fib是一个生成器函数, 调用fib不会执行其内部的代码, 而是会产生一个生成器对象f, f是一个可迭代对象, 对f调用next()方法, 生成器开始执行, 直到遇到下一个yield或者return语句时中断, 产出结果并交出控制权给调用函数。  
 
-可以看到这个阶段, 生成器的功能还比较简陋, 调用方式只有next(), return不能返回值而是抛出StopIteration异常, 只能产出值而不能接收值。
+这也可以解释为什么这个阶段生成器的功能还比较简陋, 调用方式只有next(), 实现了__next__(), 就满足了可迭代对象的要求, return不能返回值而是抛出StopIteration异常, 只能产出值而不能接收值, 这些看起来很简陋的措施, 都已经符合了对迭代的要求。
 
 ### enhanced generators  
 
