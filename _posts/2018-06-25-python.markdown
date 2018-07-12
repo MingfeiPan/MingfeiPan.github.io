@@ -45,7 +45,7 @@ for i in range(100):
 
 在定义了yield关键字大约4年之后, PEP-342为生成器添加了额外的方法, 也完善了很多功能, 最突出的那个应该就是.send()方法了, 这一个关键的改动使得生成器不光可以产出数据, 还可以接收数据, 使得生成器可以作为协程使用。
 
-我在最初接触python yield的时候, 大部分网络上的教程直接忽略了调用方的差别: next()方法与.send()方法一笔带过, 对yield从statement到expression的变化也没有提到, 直到看到两个PEP才搞明白。fluent python这本书里对这块给出了充分的解释, 还额外给出了David Beazley 在09年PyCon的一段总结([完整ppt仍然可以访问](http://www.dabeaz.com/coroutines/Coroutines.pdf)):    
+我在最初接触python yield的时候, 对区分生成器跟协程这两个概念很模糊, 大部分网络上的教程直接忽略了调用方的差别: next()方法与.send()方法一笔带过, 对yield从statement到expression的变化也没有提到, 一些甚至将两者混为一谈, 偏偏这两个概念又联系很多, 所以一直有点迷。直到看到两个PEP才搞明白, 其实差别很清楚。fluent python这本书里对这块给出了充分的解释, 还额外给出了David Beazley 在09年PyCon的一段总结([完整ppt仍然可以访问](http://www.dabeaz.com/coroutines/Coroutines.pdf)):    
 
 <img src="/img/in-post/coroutineandgenerator.png">
 
