@@ -18,11 +18,11 @@ python协程大致发展了数个阶段:
 
 ### yield  
 
-先从yield说起。[PEP-255]((https://www.python.org/dev/peps/pep-0255/))建立的时间是18-May-2001(卧槽我那会应该才小学3年级), 可以说非常久远了。这里提出了新的关键字yield, 使用yield关键字的函数即为生成器函数, 详细的内容都在PEP里说的很详细了, 这里整篇内容都没有提到过coroutine的说法, 包括提出的动机中那里, 也只是跟线程做了比较, 我感觉这里提出的生成器, 主要是在对迭代器惊醒改进和提升, PEP中这样描述:  
+先从yield说起。[PEP-255]((https://www.python.org/dev/peps/pep-0255/))建立的时间是18-May-2001(卧槽我那会应该才小学3年级), 可以说非常久远了。这里提出了新的关键字yield, 使用yield关键字的函数即为生成器函数, 详细的内容都在PEP里说的很详细了, 这里整篇内容都没有提到过coroutine的说法, 包括提出的动机中那里, 也只是跟线程做了比较, 我感觉这里提出的生成器(常常被描述为generator-iterators, 生成器-迭代器), 主要是在对列表类迭代器进行改进和提升, PEP中这样描述:  
 
 `provide a kind of function that can return an intermediate result ("the next value") to its caller, but maintaining the function's local state so that the function can be resumed again right where it left off`  
 
-相比迭代器直接在内存中生成本次迭代的所有数据, 生成器每次只返回一个结果(the next value), 然后会维持当前的函数的相关上下文直到再次被调用(resumed)。因为不是一次得到整个迭代序列, 所以对内存的需求很低, 可以用来迭代较大的对象乃至无限长数列(python3中 range已经改用生成器实现)。如果我们把迭代器模型看成一个消费者/生产者模型, 那么这里的生产者只是在按次序给出下一个值。放到生成器这里, 我们可以更精细的控制生产者的产出。 
+相比之前的迭代器直接在内存中生成本次迭代的所有数据, 生成器每次只返回一个结果(the next value), 然后会维持当前的函数的相关上下文直到再次被调用(resumed)。因为不是一次得到整个迭代序列(也就是所谓的lazy evaluation惰性求值), 所以对内存的需求很低, 可以用来迭代较大的对象乃至无限长数列(python3中 range已经改用生成器实现)。如果我们把迭代器模型看成一个消费者/生产者模型, 那么这里的生产者只是在按次序给出下一个值。放到生成器这里, 我们可以更精细的控制生产者的产出。 
 
 ```
 def fib():
@@ -43,5 +43,17 @@ for i in range(100):
 
 ### enhanced generators  
 
+在定义了yield关键字大约4年之后, PEP-342为生成器添加了额外的方法, 也完善了很多功能, 最突出的那个应该就是.send()方法了, 这一个关键的改动使得生成器不光可以产出数据, 还可以接收数据。这一项重要变化, 使得生成器可以作为协程使用, 协程在python中的应用也就开始发展了。
 
+我想很多人跟我一样, 在最初接触python yield的时候, 分不清楚生成器跟协程, 最初我的认为是用处不同, 叫法不同, 因为都是用yield作标志, 在根本上很难区分(当然到今天python已经给出了async来标出一个协程)。所以了解了这两个PEP之后应该是有一个明确区分了, 作者在fluent python这本书里, 额外给出了David Beazley 在09年PyCon的一段总结([完整ppt仍然可以访问](http://www.dabeaz.com/coroutines/Coroutines.pdf)):    
+
+<img src="/img/in-post/coroutineandgenerator.png">
+
+* 生成器用于产生供迭代的数据  
+* 协程是数据的消费者  
+* 为了避免脑袋炸了, 不要把这两个概念理解混了  
+* 协程与迭代无关  
+* 在协程中会使用yield产出值, 但这与迭代无关  
+
+正确区分协程跟生成器之后, 再翻回来看这一版PEP的增强内容, 
 
