@@ -43,9 +43,9 @@ for i in range(100):
 
 ### enhanced generators  
 
-在定义了yield关键字大约4年之后, PEP-342为生成器添加了额外的方法, 也完善了很多功能, 最突出的那个应该就是.send()方法了, 这一个关键的改动使得生成器不光可以产出数据, 还可以接收数据。这一项重要变化, 使得生成器可以作为协程使用, 协程在python中的应用也就开始发展了。
+在定义了yield关键字大约4年之后, PEP-342为生成器添加了额外的方法, 也完善了很多功能, 最突出的那个应该就是.send()方法了, 这一个关键的改动使得生成器不光可以产出数据, 还可以接收数据, 使得生成器可以作为协程使用。
 
-我想很多人跟我一样, 在最初接触python yield的时候, 分不清楚生成器跟协程, 最初我的认为是用处不同, 叫法不同, 因为都是用yield作标志, 在根本上很难区分(当然到今天python已经给出了async来标出一个协程)。所以了解了这两个PEP之后应该是有一个明确区分了, 作者在fluent python这本书里, 额外给出了David Beazley 在09年PyCon的一段总结([完整ppt仍然可以访问](http://www.dabeaz.com/coroutines/Coroutines.pdf)):    
+我在最初接触python yield的时候, 对生成器跟协程的概念区分很模糊, 因为都是用yield作标志, 大部分教程的介绍也直接忽略了对next()方法.send()方法的说明, 调用时没强调区别, 写法上都是使用yield, 这样确实看不出什么区别。直到了解了这两个PEP之后才搞明白, 作者除了在书本里给出了解释之外, 还额外给出了David Beazley 在09年PyCon的一段总结([完整ppt仍然可以访问](http://www.dabeaz.com/coroutines/Coroutines.pdf)):    
 
 <img src="/img/in-post/coroutineandgenerator.png">
 
@@ -55,5 +55,14 @@ for i in range(100):
 * 协程与迭代无关  
 * 在协程中会使用yield产出值, 但这与迭代无关  
 
-正确区分协程跟生成器之后, 再翻回来看这一版PEP的增强内容, 
+这里说的很清楚了, PEP-342添加了三个方法:  
+>.send(), 调用方可以使用.send(value)方法发送数据, value就是生成器中yield表达式的值, 而send的结果就是yield的值  
+>.throw(), 调用者可以抛出异常, 给生成器处理  
+>.close(), 调用者可以终止生成器   
+
+`yield除了产出之外, 还有让步的意思, 生成器yield时, 会暂停执行, 把当前的控制权限让步给调用者, 这是协程实现控制的关键`  
+
+
+
+
 
