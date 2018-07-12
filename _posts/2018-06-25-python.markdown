@@ -45,7 +45,7 @@ for i in range(100):
 
 在定义了yield关键字大约4年之后, PEP-342为生成器添加了额外的方法, 也完善了很多功能, 最突出的那个应该就是.send()方法了, 这一个关键的改动使得生成器不光可以产出数据, 还可以接收数据, 使得生成器可以作为协程使用。
 
-我在最初接触python yield的时候, 对生成器跟协程的概念区分很模糊, 因为都是用yield作标志, 大部分教程的介绍也直接忽略了对next()方法.send()方法的说明, 调用时没强调区别, 写法上都是使用yield, 这样确实看不出什么区别。直到了解了这两个PEP之后才搞明白, 作者除了在书本里给出了解释之外, 还额外给出了David Beazley 在09年PyCon的一段总结([完整ppt仍然可以访问](http://www.dabeaz.com/coroutines/Coroutines.pdf)):    
+我在最初接触python yield的时候, 大部分网络上的教程直接忽略了调用方的差别: next()方法与.send()方法一笔带过, 对yield从statement到expression的变化也没有提到, 直到看到两个PEP才搞明白。fluent python这本书里对这块给出了充分的解释, 还额外给出了David Beazley 在09年PyCon的一段总结([完整ppt仍然可以访问](http://www.dabeaz.com/coroutines/Coroutines.pdf)):    
 
 <img src="/img/in-post/coroutineandgenerator.png">
 
@@ -55,7 +55,7 @@ for i in range(100):
 * 协程与迭代无关  
 * 在协程中会使用yield产出值, 但这与迭代无关  
 
-这里说的很清楚了, PEP-342添加了三个方法:  
+至此coroutine跟generator应该是分的很清楚了, 我们接着看PEP-342的内容, 其中添加了三个方法:  
 >.send(), 调用方可以使用.send(value)方法发送数据, value就是生成器中yield表达式的值, 而send的结果就是yield的值  
 >.throw(), 调用者可以抛出异常, 给生成器处理  
 >.close(), 调用者可以终止生成器   
