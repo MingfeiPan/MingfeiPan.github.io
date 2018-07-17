@@ -62,6 +62,68 @@ for i in range(100):
 
 `yield除了产出之外, 还有让步的意思, 生成器yield时, 会暂停执行, 把当前的控制权限让步给调用者, 这是协程实现控制的关键`  
 
+```
+import inspect
+
+def gen(a):
+	print('gen start a =', a)
+	b = yield a
+	print('received b =', b)
+	c = yield a + b
+	print('received c ={}'.format(c))
+
+
+g = gen(14)
+print(next(g))
+# print(g.send(None))
+print(inspect.getgeneratorstate(g))
+print(g.send(28))
+print(g.send(100))
+
+
+output:  
+
+GEN_CREATED
+gen start a = 14
+14
+GEN_SUSPENDED
+received b = 28
+42
+received c =100
+Traceback (most recent call last):
+  File "coro.py", line 17, in <module>
+    print(g.send(100))
+StopIteration
+
+```
+这是一段协程代码, 可以看到协程对象初始时, 其状态为GEN_CREATE, 执行了第一次next(g)到第一个yield, 协程挂起, 状态变为GEN_SUSPENDED。这里可以看到一次next()调用执行到了第一个yield的右半部分, 协程每一个阶段都是从yield这里分开的, 书里有个图表示的很好:  
+
+<img src="/img/in-post/yield_coro.png">
+
+我们这段程序执行3个阶段, 都在yield的断开, 上一个阶段执行右半边, 下一个阶段由客户端通过send()激活后, 再执行左半边的赋值语句直到下一个yield,最后我们赋值给c100这个值, 协程正常执行到末尾抛出StopIteration  
+
+值得注意的是, 每一个处于初始状态的协程, 第一次执行时都会执行到第一个yield的右边, 此时是不会执行赋值语句的, 所以第一次需要调用next()或者send(None)来 *预激* 协程。如果通过send()传入任何非None值, 会报错TypeError。很多程序会用一个通用的装饰器预激协程, PEP-342最后的例子就给出了一个:  
+
+```
+#A simple consumer decorator that makes a generator function automatically advance to its first yield point when initially called
+
+def consumer(func):
+    def wrapper(*args,**kw):
+        gen = func(*args, **kw)
+        gen.next()
+        return gen
+    return wrapper
+    
+```
+
+接着看一下剩余的改动:  
+>.throw()方法致使协程暂停所在的yield处抛出指定的异常, yield产出的值会是.throw()方法的返回值, 如果协程没有处理抛出的异常, 这个异常也会继续向上抛出到调用方。  
+>.close()方法会在暂停的yield处抛出GeneratorExit异常, 如果协程没有处理这个异常或者抛出了StopIteration异常, 调用方不会报错, 协程终止  
+
+另外python3.3之前, 协程return时会报错, 之后的版本会抛出一个StopIteration, 在异常的value属性里保留此次return的值, 也算是提供一个return的途径。 其上就是PEP-342提出的内容, 更详细的部分可以直接看PEP, 其中在末尾给出的几个例子都不错。  
+
+  
+
 
 
 
