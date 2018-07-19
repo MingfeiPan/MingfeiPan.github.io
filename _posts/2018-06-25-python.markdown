@@ -122,6 +122,7 @@ def consumer(func):
 
 另外python3.3之前, 协程return时会报错, 之后的版本return时会抛出一个StopIteration, 在异常的value属性里保留此次return的值, 也算是提供一个return的途径。 其上就是PEP-342提出的内容, 更详细的部分可以直接看PEP, 其中在末尾给出的几个例子都不错。  
 
+
   
 
 
