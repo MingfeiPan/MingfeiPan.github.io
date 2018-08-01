@@ -1,6 +1,6 @@
 ---
 layout: post
-title: 回溯算法的更多一些笔记 
+title: 回溯算法的一些笔记 
 category: algorithm
 tag : algorithm
 ---
@@ -32,3 +32,24 @@ def dfs(level, target, current):
 单个解时, 可以找到return case立即返回, 多个解时通常需要遍历整个搜索树来找到所有符合要求的解
 
 生成power set就是一个可以利用回溯来解决的[问题](https://leetcode.com/problems/subsets/)
+
+```
+class Solution:
+    def subsets(self, nums):
+        """
+        :type nums: List[int]
+        :rtype: List[List[int]]
+        """
+        if not nums:
+            return [[]]
+        ret = []
+        self.dfs(ret, [], nums, 0)
+        return ret
+    def dfs(self, ret, temp, nums, start):
+        ret.append(temp)
+        for i in range(start, len(nums)):
+            self.dfs(ret, temp+[nums[i]], nums, i+1)
+```
+
+典型的一段递归写法, 类似的问题均可以采用这种结构来处理, 不同处往往体现在条件分支选择上面  
+
