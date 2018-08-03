@@ -7,3 +7,123 @@ tag : python
 
 ### yield from
 
+yield from是python3.3的新语法, 来自[PEP-380](https://www.python.org/dev/peps/pep-0380/), 目的也很直接:  
+
+`for a generator to delegate part of its operations to another generator`
+
+如果有仔细看上一篇里Beazley的那个ppt, 里面说了很多把coroutines当作pipelines管道来利用的例子, 中间作为管道的coroutines也可以说是所谓委派生成器。 在生成器gen中使用yield from subgen()时, subgen()会获得控制权, 把产出的值传给gen的调用方, 也就是调用方可以直接控制subgen。  
+
+一个简单例子:  
+
+```
+def gen():
+	for c in 'ab':
+		yield c
+	for i in range(0,5):
+		yield i
+
+print(list(gen()))
+
+def gen1():
+	yield from 'ab'
+	yield from range(0,5)
+
+print(list(gen1()))
+
+output:
+['a', 'b', 0, 1, 2, 3, 4]
+['a', 'b', 0, 1, 2, 3, 4]
+
+```
+用yield from简化之前需要for循环处理的子生成器调用, yield会打开双向通道, 把外层的调用于内层子生成器连接起来。 其实这个例子还不太典型, 这里如果不用yield from, 我们也就仅仅需要多写一个for循环来处理简单的子生成器。然而真实使用时, 我们要处理coroutine的各种方法, send(), throw(), exit()等等, 全部手动处理的话, 代码是这样的:  
+
+```
+_i = iter(EXPR)
+try:
+    _y = next(_i)
+except StopIteration as _e:
+    _r = _e.value
+else:
+    while 1:
+        try:
+            _s = yield _y
+        except GeneratorExit as _e:
+            try:
+                _m = _i.close
+            except AttributeError:
+                pass
+            else:
+                _m()
+            raise _e
+        except BaseException as _e:
+            _x = sys.exc_info()
+            try:
+                _m = _i.throw
+            except AttributeError:
+                raise _e
+            else:
+                try:
+                    _y = _m(*_x)
+                except StopIteration as _e:
+                    _r = _e.value
+                    break
+        else:
+            try:
+                if _s is None:
+                    _y = next(_i)
+                else:
+                    _y = _i.send(_s)
+            except StopIteration as _e:
+                _r = _e.value
+                break
+RESULT = _r
+
+```
+
+使用yield from的话:  
+
+```
+RESULT = yield from EXPR
+
+```
+
+yield from处理了所有需要考虑的情况, 我们只需要按要求使用就可以了, 这里再列个例子:  
+
+```
+# Example of flattening a nested sequence using subgenerators
+
+from collections import Iterable
+
+def flatten(items, ignore_types=(str, bytes)):
+    for x in items:
+        if isinstance(x, Iterable) and not isinstance(x, ignore_types):
+            yield from flatten(x)
+        else:
+            yield x
+
+items = [1, 2, [3, 4, [5, 6], 7], 8]
+
+# Produces 1 2 3 4 5 6 7 8
+for x in flatten(items):
+    print(x, end=' ')
+
+items = ['Dave', 'Paula', ['Thomas', 'Lewis']]
+for x in flatten(items):
+    print(x, end=' ')
+    
+output:
+1 2 3 4 5 6 7 8 Dave Paula Thomas Lewis
+
+```
+
+书里也明确的给出了yield from 处理的细节(p398), 我抄在这里作为记录:  
+* 子生成器产出的值都直接传给委派生成器的调用方  
+* 使用send()方法发给委派生成器的值都直接传给子生成器。如果发送的值是None, 那么会调用子生成器的 \__next__()方法。如果发送的值不是None, 那么会调用子生成器的send()方法。如果调用的方法抛出StopIteration异常, 那么委派生成器恢复运行。任何其他异常都会向上冒泡, 传给委派生成器  
+* 生成器退出时, 生成器(或子生成器)中的return expr 表达式会触发 StopIteration(expr)异常抛出  
+* yield from表达式的值是子生成器终止时传给StopIteration异常的第一个参数  
+* 传入委派生成器的异常, 除了GeneratorExit之外都传给子生成器的throw()方法。如果调用throw()方法时抛出StopIteration异常, 委派生成器恢复运行。StopIteration之外的异常会向上冒泡。传给委派生成器  
+* 如果把GeneratorExit异常传入委派生成器, 或者在委派生成器上调用close()方法, 那么在子生成器上调用close()方法, 如果他有的话。如果调用close()方法导致异常抛出, 那么异常会向上冒泡, 传给委派生成器, 否则, 委派生成器抛出GeneratorExit异常  
+
+
+
+
