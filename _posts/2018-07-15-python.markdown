@@ -124,6 +124,43 @@ output:
 * 传入委派生成器的异常, 除了GeneratorExit之外都传给子生成器的throw()方法。如果调用throw()方法时抛出StopIteration异常, 委派生成器恢复运行。StopIteration之外的异常会向上冒泡。传给委派生成器  
 * 如果把GeneratorExit异常传入委派生成器, 或者在委派生成器上调用close()方法, 那么在子生成器上调用close()方法, 如果他有的话。如果调用close()方法导致异常抛出, 那么异常会向上冒泡, 传给委派生成器, 否则, 委派生成器抛出GeneratorExit异常  
 
+这大致就是yield from的内容了, 其实如果有所了解能看出他完成了类似其他语言await的作用, 那么为什么不直接用await?, 我猜当时应该是有过讨论的, 而且是蛮激烈的讨论, 最终可能是BDFL决定不使用新的关键字而是用yield from, 这在很长一段时期内导致def关键字的混用, 协程, 函数, 生成器都用def来定义, 对于初学者很容易困惑(比如说我)。 
+
+因为这个原因python3.4提供了@asyncio.coroutine来装饰使用yeld from语法的协程, 便于从一个普通函数中把协程"凸显"出来。  
+
+手册上的说明:  
+>@asyncio.coroutine: Decorator to mark generator-based coroutines. This enables the generator use yield from to call async def coroutines, and also enables the generator to be called by async def coroutines, for instance using an await expression.
+
+更巧合的是python的协程包asyncio基本完成于python3.4, 这也导致lib代码里使用了大量的yield from, 一直使用到现在, 但其实yield from在python3.5之后就被await关键字取代了。  
+
+《流畅的python》这本书完成于2015年, 在那个时间前后, python3.5新加入了关键字asnyc/await来取代旧的yield from, [PEP-492](https://www.python.org/dev/peps/pep-0492/#async-await)里有详细的说明, 书中作者多次提到了新语法的动向, 也对yield from语法颇有微词, 原话是:"The introduction of yield from is particularly worrying"(p415), 但是不管怎么样今天的python已经可以完美使用async/await来实现协程了。
+
+PEP-492的内容, 简单说就是用async替换掉@asyncio.coroutine, 用await替换掉yield from  
+原先这样实现的协程:  
+
+```
+@asyncio.coroutine
+def do(x):
+	yield from asyncio.sleep(x)
+	print('waiting : {}'.format(x))
+	return x 
+```
+现在这样写:  
+
+```
+async def do(x):
+	await asyncio.sleep(x)
+	print('waiting : {}'.format(x))
+	return x
+```
+
+PEP-492也给出官方认为的替换理由:  
+* 因为使用相同的语法, coroutines跟一般的生成器太容易混淆了, 尤其是对新手 
+* 特征非常不明显, 重构容易出错    
+* 语法上只有允许yield的地方才可以使用异步调用, 像with或者for这样的语法压根没得用了  
+
+另外为了严格的作出区分, PEP-492引入了新的类型coroutine, 按照他的说法就是, 强调如果用新语法就都用新语法, 新的coroutine调用里不能出现yield from的旧内容了。 其他详细内容可以自行去看, 其实对于后面的人来说yield from的内容不了解也没什么问题, 但是这确实是python协程发展中值得记录的一段"弯路"。  
+
 
 
 
