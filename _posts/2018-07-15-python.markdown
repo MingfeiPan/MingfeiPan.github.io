@@ -116,7 +116,7 @@ output:
 
 ```
 
-书里也明确的给出了yield from 处理的细节(p398), 我抄在这里作为记录:  
+《流畅的python》离给出了yield from 细节内容(p398), 我抄在这里作为记录:  
 * 子生成器产出的值都直接传给委派生成器的调用方  
 * 使用send()方法发给委派生成器的值都直接传给子生成器。如果发送的值是None, 那么会调用子生成器的 \__next__()方法。如果发送的值不是None, 那么会调用子生成器的send()方法。如果调用的方法抛出StopIteration异常, 那么委派生成器恢复运行。任何其他异常都会向上冒泡, 传给委派生成器  
 * 生成器退出时, 生成器(或子生成器)中的return expr 表达式会触发 StopIteration(expr)异常抛出  
@@ -124,16 +124,17 @@ output:
 * 传入委派生成器的异常, 除了GeneratorExit之外都传给子生成器的throw()方法。如果调用throw()方法时抛出StopIteration异常, 委派生成器恢复运行。StopIteration之外的异常会向上冒泡。传给委派生成器  
 * 如果把GeneratorExit异常传入委派生成器, 或者在委派生成器上调用close()方法, 那么在子生成器上调用close()方法, 如果他有的话。如果调用close()方法导致异常抛出, 那么异常会向上冒泡, 传给委派生成器, 否则, 委派生成器抛出GeneratorExit异常  
 
-这大致就是yield from的内容了, 其实如果有所了解能看出他完成了类似其他语言await的作用, 那么为什么不直接用await?, 我猜当时应该是有过讨论的, 而且是蛮激烈的讨论, 最终可能是BDFL决定不使用新的关键字而是用yield from, 这在很长一段时期内导致def关键字的混用, 协程, 函数, 生成器都用def来定义, 对于初学者很容易困惑(比如说我)。 
+其实yield from就是完成了类似其他语言await的作用, 所以有一个问题:  
+为什么不直接用await? 我猜当时应该是有过讨论的, 而且是蛮激烈的讨论, 最终可能是BDFL决定不使用新的关键字而是用yield from这种语法来代替。 这在很长一段时期内导致def关键字混用: 协程, 函数, 生成器都用def来定义, 对于初学者来说很容易困惑。   
 
-因为这个原因python3.4提供了@asyncio.coroutine来装饰使用yeld from语法的协程, 便于从一个普通函数中把协程"凸显"出来。  
+甚至python3.4还提供了@asyncio.coroutine来装饰使用yeld from语法的协程, 便于从一个普通函数中把协程"凸显"出来, 但这样也并没有解决根本问题。  
 
 手册上的说明:  
 >@asyncio.coroutine: Decorator to mark generator-based coroutines. This enables the generator use yield from to call async def coroutines, and also enables the generator to be called by async def coroutines, for instance using an await expression.
 
-更巧合的是python的协程包asyncio基本完成于python3.4, 这也导致lib代码里使用了大量的yield from, 一直使用到现在, 但其实yield from在python3.5之后就被await关键字取代了。  
+更巧合的是python的协程包asyncio基本完成于python3.4, 这也导致lib代码里使用了大量的yield from, 一直留到现在, 但其实yield from在python3.5之后就被await关键字取代了, 记得阅读asyncio lib代码时还专门去看了python3.7仍旧有大量yield from使用。  
 
-《流畅的python》这本书完成于2015年, 在那个时间前后, python3.5新加入了关键字asnyc/await来取代旧的yield from, [PEP-492](https://www.python.org/dev/peps/pep-0492/#async-await)里有详细的说明, 书中作者多次提到了新语法的动向, 也对yield from语法颇有微词, 原话是:"The introduction of yield from is particularly worrying"(p415), 但是不管怎么样今天的python已经可以完美使用async/await来实现协程了。
+《流畅的python》这本书完成于2015年, 在那个时间前后, python3.5新加入了关键字asnyc/await来取代旧的yield from, 由[PEP-492](https://www.python.org/dev/peps/pep-0492/#async-await)提出, 书中作者在介绍yield from时多次提到了新语法的动向, 很明显能看出来他对yield from语法颇有微词, 原话是:"The introduction of yield from is particularly worrying"(p415)。 说来也是巧合, 如果书能晚写完个半年就能把async/await的内容加上去了。不过不管怎么样今天的python已经可以完美使用async/await来实现协程了。
 
 PEP-492的内容, 简单说就是用async替换掉@asyncio.coroutine, 用await替换掉yield from  
 原先这样实现的协程:  
@@ -154,7 +155,7 @@ async def do(x):
 	return x
 ```
 
-PEP-492也给出官方认为的替换理由:  
+PEP-492给出官方的替换理由:  
 * 因为使用相同的语法, coroutines跟一般的生成器太容易混淆了, 尤其是对新手 
 * 特征非常不明显, 重构容易出错    
 * 语法上只有允许yield的地方才可以使用异步调用, 像with或者for这样的语法压根没得用了  
