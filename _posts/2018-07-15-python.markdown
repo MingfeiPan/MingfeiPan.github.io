@@ -218,8 +218,7 @@ Why "async" and "await" keywords
 >5 C++也要用了  
 >6 还有其他小众语言也用了...   
 
-This is a huge benefit, as some users already have experience with async/await, and because it makes working with many languages in one project easier (Python with ECMAScript 7 for instance)
-
+(所以你TM为啥不早用, 还要绕一圈yield from)
 
 
 
