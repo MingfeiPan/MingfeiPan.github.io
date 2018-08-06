@@ -118,7 +118,7 @@ output:
 
 《流畅的python》离给出了yield from 细节内容(p398), 我抄在这里作为记录:  
 * 子生成器产出的值都直接传给委派生成器的调用方  
-* 使用send()方法发给委派生成器的值都直接传给子生成器。如果发送的值是None, 那么会调用子生成器的 \__next__()方法。如果发送的值不是None, 那么会调用子生成器的send()方法。如果调用的方法抛出StopIteration异常, 那么委派生成器恢复运行。任何其他异常都会向上冒泡, 传给委派生成器  
+* 使用send()方法发给委派生成器的值都直接传给子生成器。如果发送的值是None, 那么会调用子生成器的 \_\_next__()方法。如果发送的值不是None, 那么会调用子生成器的send()方法。如果调用的方法抛出StopIteration异常, 那么委派生成器恢复运行。任何其他异常都会向上冒泡, 传给委派生成器  
 * 生成器退出时, 生成器(或子生成器)中的return expr 表达式会触发 StopIteration(expr)异常抛出  
 * yield from表达式的值是子生成器终止时传给StopIteration异常的第一个参数  
 * 传入委派生成器的异常, 除了GeneratorExit之外都传给子生成器的throw()方法。如果调用throw()方法时抛出StopIteration异常, 委派生成器恢复运行。StopIteration之外的异常会向上冒泡。传给委派生成器  
@@ -136,7 +136,9 @@ output:
 
 《流畅的python》这本书完成于2015年, 在那个时间前后, python3.5新加入了关键字asnyc/await来取代旧的yield from, 由[PEP-492](https://www.python.org/dev/peps/pep-0492/#async-await)提出, 书中作者在介绍yield from时多次提到了新语法的动向, 很明显能看出来他对yield from语法颇有微词, 原话是:"The introduction of yield from is particularly worrying"(p415)。其实如果书能晚写完个半年, 作者就能把async/await的内容加上去了, 书里对携程的介绍也能更加完满。不过不管怎么样今天的python已经可以完美使用async/await来实现协程了。
 
-PEP-492的内容, 简单说就是用async替换掉@asyncio.coroutine, 用await替换掉yield from  
+### async/await  
+
+来自[PEP-492](https://www.python.org/dev/peps/pep-0492/#async-await)的内容, 简单说就是用async替换掉@asyncio.coroutine, 用await替换掉yield from  
 原先这样实现的协程:  
 
 ```
@@ -160,8 +162,69 @@ PEP-492给出官方的替换理由:
 * 特征非常不明显, 一个函数是否是一个协程, 只取决于它里面是否出现了yield或yield from语句, 重构容易出错    
 * 语法上只有允许yield的地方才可以使用异步调用, 像with或者for这样的语法压根没得用了  
 
-另外为了严格的对coroutine跟generator作出区分, PEP-492引入了新的类型coroutine, 按照PEP的说法就是, 强调如果用新语法就都用新语法, 新的coroutine调用里不能出现yield from的旧内容。详细内容我这里就不写了, 可以去PEP-492看, 其实对于后面的人来说yield from的内容不了解也没什么问题, 但是这确实是python协程发展中值得记录的一段"弯路"。  
+为了严格地把协程从之前跟生成器混用的情况中分离出来, 新添加了一些概念:  
 
+* Native coroutine function 原生协程函数, 由async def定义的协程, 可以配合使用await或者return语句。 特别说明, 不管有没有await, 只要用async定义的就是协程  
+* Native coroutine 原生协程, 调用原生协程函数返回的对象  
+* Generator-based coroutine function 基于生成器的协程函数, 基于生成器语法的协程, 用@asyncio.coroutine装饰器与yield from定义的协程  
+* Generator-based coroutine 于生成器的协程, 基于生成器的协程函数返回的对象  
+* Asynchronous context manager, 异步上下文管理器, async with  
+* Asynchronous iterator, 异步迭代器, async for   
+* 原生协程对象不实现\_\_iter\_\_和\_\_next\_\_方法, 不能对其迭代  
+* 未装饰(@types.coroutine)的生成器不能yield from一个原生协程, 这样做会引发TypeError异常
+* 基于生成器的协程在经过@asyncio.coroutine装饰后, 可以yield from原生协程对象(python3.5 经过@asyncio.coroutine装饰的基于生成器的协程对象也可以被await调用) 
+* 
+
+对async有一些语法要求: 
+>1 在async函数里面使用yield或yield from语句, 会引发SyntaxError异常  
+>2 协程不再抛出StopIteration异常, 而是一个RuntimeError异常  
+>3 如果一个协程从未await等待就被垃圾收集器销毁了, 会引发一个RuntimeWarning异常
+
+对await的一些语法要求:  
+>1 await和yield from类似  
+>2 在cpython内部, await使用了yield from的实现, 但是多了一步参数验证, await只接受awaitable对象  
+>3 在async def函数之外使用await语句, 会引发SyntaxError异常  
+>4 await右边不是一个awaitable对象, 会引发TypeError异常  
+
+关于awaitable对象:  
+* 一个原生协程对象, 或者一个被@types.coroutine装饰过的生成器实现的协程对象都是awaitable对象  
+* 一个有\_\_await\_\_方法的对象  
+* CPython C API中带有tp_as_async.am_await的函数, 该函数返回一个迭代器  
+
+关于\_\_await\_\_方法:  
+\_\_await\_\_返回一个迭代器, 每个yield from调用链条都会追溯到一个最终的yield语句, 这是Future实现的基本机制。在Python内部, 协程是生成器的一种特殊形式, 每个await最终会被await调用链上的某个yield语句挂起, 为了让协程可以这样使用, 添加了一个新的魔术方法\_\_await\_\_, 这里PEP给了个例子: 在asyncio模块, 要想在await语句里使用Future对象, 只需给asyncio.Future加一行: \_\_await\_\_ = \_\_iter\_\_
+
+```
+In asyncio, for instance, to enable Future objects in await statements, the only change is to add __await__ = __iter__ line to asyncio.Future class
+``` 
+
+这里大致就是PEP-492的内容, 总结了很多其实用起来并没有这么复杂, 剩余还有关于async with跟async for内容请大家自行阅读PEP。
+
+还有些有趣的内容, 比如asyncio之前已经写好了, 所以必然有一些兼容性的改动以配合async/await:  
+* 修改@asyncio.coroutine装饰器, 调用types.coroutine()函数来设置一个CO\_ITERABLE\_COROUTINE标识  
+* 在asyncio.Future类加一行, \_\_await\_\_ = \_\_iter\_\_(上面提到过的) 
+* 用ensure_future()替换async()函数, async()函数被标记为Deprecated  
+
+因为generator-based的协程跟native协程现在确实不同了, 所以之前写generator-based的协程时所要求的@asyncio.coroutine装饰器现在是强制的了, 只有被@asyncio.coroutine装饰过的generator-based的协程才可以正常使用  
+
+还看到了一块想写在这里的:  
+Why "async" and "await" keywords  
+>1 	C#老早就用了  
+>2 ECMAScript 7也要用了  
+>3 Facebook's Hack/HHVM用了  
+>4 Google's Dart language, Scala也用了  
+>5 C++也要用了  
+>6 还有其他小众语言也用了...   
+
+This is a huge benefit, as some users already have experience with async/await, and because it makes working with many languages in one project easier (Python with ECMAScript 7 for instance)
+
+
+关于yield from到async/await算是一路了解下来, 总感觉yield from更像是走了一段"弯路", 如果中间不绕这么一段我想python协程会更好学习一些。
+
+
+
+
+ 
 
 
 
