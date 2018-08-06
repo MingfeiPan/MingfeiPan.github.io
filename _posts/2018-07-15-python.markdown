@@ -194,16 +194,15 @@ types模块添加了一个装饰器新函数coroutine(fn), 可以把基于生成
 * 一个有\_\_await\_\_方法的对象  
 * CPython C API中带有tp_as_async.am_await的函数, 该函数返回一个迭代器  
 
-关于\_\_await\_\_方法:  
-\_\_await\_\_返回一个迭代器, 每个yield from调用链条都会追溯到一个最终的yield语句, 这是Future实现的基本机制。在Python内部, 协程是生成器的一种特殊形式, 每个await最终会被await调用链上的某个yield语句挂起, 为了让协程可以这样使用, 添加了一个新的魔术方法\_\_await\_\_, 这里PEP给了个例子: 在asyncio模块, 要想在await语句里使用Future对象, 只需给asyncio.Future加一行: \_\_await\_\_ = \_\_iter\_\_
+关于\_\_await\_\_方法:   
+* \_\_await\_\_返回一个迭代器, 每个yield from调用链条都会追溯到一个最终的yield语句, 这是Future实现的基本机制。在Python内部, 协程是生成器的一种特殊形式, 每个await最终会被await调用链上的某个yield语句挂起, 为了让协程可以这样使用, 添加了一个新的魔术方法\_\_await\_\_, 这里PEP给了个例子: 在asyncio模块, 要想在await语句里使用Future对象, 只需给asyncio.Future加一行: \_\_await\_\_ = \_\_iter\_\_
 
 ```
 In asyncio, for instance, to enable Future objects in await statements, the only change is to add __await__ = __iter__ line to asyncio.Future class
 ``` 
 
-这里大致就是PEP-492的内容, 总结了很多其实用起来并没有这么复杂, 剩余还有关于async with跟async for内容请大家自行阅读PEP。
 
-还有些有趣的内容, 比如asyncio之前已经写好了, 所以必然有一些兼容性的改动以配合async/await:  
+asyncio之前是使用python3.4语法写的, 所以必然有一些兼容性的改动以配合async/await:  
 * 修改@asyncio.coroutine装饰器, 调用types.coroutine()函数来设置一个CO\_ITERABLE\_COROUTINE标识  
 * 在asyncio.Future类加一行, \_\_await\_\_ = \_\_iter\_\_(上面提到过的) 
 * 用ensure_future()替换async()函数, async()函数被标记为Deprecated  
@@ -222,7 +221,6 @@ Why "async" and "await" keywords
 This is a huge benefit, as some users already have experience with async/await, and because it makes working with many languages in one project easier (Python with ECMAScript 7 for instance)
 
 
-关于yield from到async/await算是一路了解下来, 总感觉yield from更像是走了一段"弯路", 如果中间不绕这么一段我想python协程会更好学习一些。
 
 
 
