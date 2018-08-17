@@ -11,7 +11,7 @@ tag : linux
 
 先汇总的说一下, 截止到今天chrome对于证书的要求是 要sha256 2048位 带SAN(Subject Alternative Name,多域名), 所以使用sha1的已经不可用, 另外没有配SAN的也不可用。 
 
-`查到是在chrome58的时候取消了对原来用的COMMON NAME通用域名的支持, 改为支持SAN(多域名)系统这种写法(只对自建证书, 被ca签名的证书可以兼容)` 
+`查到是在chrome58的时候取消了对原来用的COMMON NAME通用域名的支持, 改为支持SAN(多域名)系统这种写法(只对自建证书, 被ca认证的证书可以兼容)` 
 
 先解释一些遇到的名词:   
 
@@ -21,7 +21,7 @@ tag : linux
 * der 编码格式, 这是另一种编码格式, 直接cat是二进制格式, 类似pem可以用命令 *openssl x509 -in example.der -inform der -text -noout* 查看, 通常windows服务器使用der格式而unix使用pem格式  
 * crt/cer 扩展名, 有些证书直接使用pem或者der做扩展名, 有些则会使用其他的比如crt/cer, 都来自certificate这个词。注意使用这两个扩展名的证书编码不是确定的, 有可能使用pem也可能使用der, 一般会跟着操作系统的使用习惯, unix用crt windows用cer(mac也有见到cer)  
 * key 存放公钥或者私钥的文件, 用pem或者der格式编码, 可以用 *openssl rsa in example.key -text -noout* 查看  
-* csr, Cerificate Signing Request, 证书签名请求, 用来向ca机构申请证书的东西, 其实就是你的公钥, 还附带一些相关的信息    
+* csr Cerificate Signing Request, 证书签名请求, 用来向ca机构申请证书的东西, 其实就是你的公钥, 还附带一些相关的信息    
 
 借助openssl命令, 生成key以及证书: 
 
