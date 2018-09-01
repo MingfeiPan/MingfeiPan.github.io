@@ -49,7 +49,7 @@ ssl_certificate ekwing.crt;
 ssl_certificate_key ekwing.key;
 ```
 
-浏览器访问服务器, 加载证书, 我们需要手动添加系统信任。在之前版本的chrome中完成这些步骤, 就已经可以使用。但是现在的话, 仍旧会报错:  
+浏览器访问服务器, 加载证书, 我们需要手动添加系统信任。在之前版本的chrome中完成这些步骤之后, 证书就已经可以使用。但是现在的话, 仍旧会报错:  
 
 <img src="/img/in-post/sanmissing.png">  
 
