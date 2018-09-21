@@ -1,0 +1,86 @@
+---
+layout: post
+title:  python单例的另一些笔记
+category: python
+tag : python
+--- 
+
+
+上一篇已经分析几种python使用单例的途径, 发现使用\_\_new\_\_时, 最终实例如果有　\_\_init\_\_ 方法, 还是会每次去调用。 想避免的话有两种办法, 一个是直接使用类方法classmethod, 跳过实例化的步骤。另一个是使用python import, 利用python机制来实现单例。这里再分析另一种写法, 使用元类。
+
+#### 关于元类  
+
+先说元类的作用, 很直白的, python允许我们动态的创建类, 利用type()函数可以创建出想要的类。最直接的比如写一个ORM, 这也是大家都爱举的例子, 利用元类不用的表名可以生成不同的类来使用, 不用去繁琐的每个表都对应的定义一个类了。
+
+这里类是元类的实例, 我们最后使用的实例instance是类的实例(要跟父类子类的继承关系区分开)  
+
+<img src="/img/in-post/metaclass.png">
+
+关于元类的基础知识我这就不说了, 直入主题使用元类来处理单例:
+
+```
+import threading
+
+class Singleton(type):
+
+    def __init__(self, *args, **kwargs):
+        print("__init__")
+        self.__instance = None
+        super(Singleton,self).__init__(*args, **kwargs)
+
+    def __call__(self, *args, **kwargs):
+        print("__call__")
+        _instance_lock = threading.Lock()
+        if self.__instance is None:
+        	with _instance_lock:
+        		if self.__instance is None:
+        			self.__instance = super(Singleton,self).__call__(*args, **kwargs)
+        return self.__instance
+
+    def __new__(cls, name, bases, attr):
+    	print("__new__")
+    	return type.__new__(cls, name, bases, attr)
+
+class Foo(metaclass=Singleton):
+
+	def __init__(self, *args, **kwargs):
+		print("init")
+		super(Foo, self).__init__()
+
+	def __new__(cls, *args, **kwargs):
+		print("new")
+		return super(Foo, cls).__new__(cls)	
+
+
+
+
+foo1 = Foo(1)
+print('*************')
+foo2 = Foo(2)
+
+
+print(foo1)
+print(foo2)
+print(foo1 == foo2)
+
+output:
+__new__
+__init__
+__call__
+new
+init
+*************
+__call__
+<__main__.Foo object at 0x10569bf60>
+<__main__.Foo object at 0x10569bf60>
+True
+
+```
+几点注意:  
+* Singleton元类要继承自type  
+* 当第一次初始化foo1时, 依次调用的顺序  
+* 当我们对类Foo调用Foo()时, 实际上会执行他的元类Singleton的\_\_call\_\_方法, 就好像我们如果我们直接调用实例foo1(), 也会去执行Foo的\_\_call\_\_方法(就是图里那个关系)  
+* 第二次foo2去实例化的时候, 并不会执行\_\_init\_\_与\_\_new\_\_方法, 不论是元类还是当前类的  
+
+这样我们也完美的得到的一个实现单例的方法, 总结起来使用@classmethod, 使用元类, 使用python import都可以实现一个功能完善的单例。选择一个的话, python import简直完美。  
+
