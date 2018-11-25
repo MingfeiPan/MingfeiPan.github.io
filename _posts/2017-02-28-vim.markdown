@@ -63,7 +63,8 @@ tag : vim
 >/ ? 正序跟反序, n或者N 查找上一个或下一个   
 
 替换命令  
->:%s/{ori}/{tar}/g  
+>:%s/{ori}/{tar}/g 全文件范围内替换ori->tar  
+
 
 
 `注释建议使用插件,vim-commentary`
