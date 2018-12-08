@@ -4,3 +4,56 @@ title:  python gevent
 category: python
 tag : python
 --- 
+
+### gevent  
+
+[gevent](http://www.gevent.org/intro.html) 是一个基于协程的异步高性能网络框架, 我感觉在asyncio成熟之前, 这是一个很好的写httpd的方案, [很多项目都用了gevent](https://github.com/gevent/gevent/wiki/Projects)。 当然现在asyncio已经很好用了, 但是不妨碍再了解下gevent。  
+
+
+#### 特点  
+名字gevent 来自 g-event -> greenlet + event   
+
+* 基于libev 或 libuv 的快速event loop  
+* 基于[greenlet](https://greenlet.readthedocs.io/en/latest/)的协程/用户态线程  
+* monkey patch 一键调整阻塞接口为非阻塞   
+
+```
+import socket
+import gevent
+from gevent import monkey
+monkey.patch_all() #patch to non-blocking
+
+urls = ["www.baidu.com", "www.163.com", "blackjar.me"]
+jobs = [gevent.spawn(socket.gethostbyname, url) for url in urls]
+gevent.joinall(jobs, timeout=5)
+print([job.value for job in jobs])
+```
+
+上面是一段基础代码, gevent还提供了Event, Queue, local协程本地变量等等数据结构, 这应该是我们在开发进程或者线程应用时也常用到的工具, 一个Queue的例子:  
+
+```
+import gevent
+from gevent.queue import Queue
+import time
+products = Queue()
+
+def consumer(name):
+	while not products.empty():
+		print("{} get msg {}".format(name, products.get()))
+		gevent.sleep(0)
+
+def producer(n):
+	for i in range(n):
+		products.put(i)
+
+gevent.joinall([gevent.spawn(producer, 10), gevent.spawn(consumer,"eric"), gevent.spawn(consumer, "butters"), gevent.spawn(consumer, "stan")])
+
+```
+
+#### 相关资源  
+* [官网教程](http://sdiehl.github.io/gevent-tutorial/)
+* [api列表](http://www.gevent.org/api/index.html)   
+
+教程列举了各类服务器的实例代码, 不用几天就可以快速上手代码, 这里有一份基于gevent的[http压测工具](https://github.com/MingfeiPan/pressure-test-tool), 可以参考  
+
+
