@@ -24,9 +24,7 @@ tag : linux
 还有一些详细用例,请参考 [linux ls](http://www.cnblogs.com/peida/archive/2012/10/23/2734829.html). 
 
 
-###cd, pwd 略
-
-###mkdir
+### mkdir
 >-m, --mode=模式，设定权限<模式> (类似 chmod)  
 >-p, --parents  可以是一个路径名称。此时若路径中的某些目录尚不存在,加上此选项后,系统将自动建立好那些尚不存在的目录,即一次可以建立多个目录;  
 >-v, --verbose  每次创建新目录都显示信息
@@ -38,9 +36,8 @@ tag : linux
 例二: `mkdir -vp scf/{lib/,bin/,doc/{info,product},logs/{info,product},service/deploy/{info,product}}`  
 *完整创建项目所用文件夹*  
 
-###rm mkdir mv cp touch略
 
-###cat
+### cat
 >-b, --number-nonblank    对非空输出行编号  
 >-n, --number     对输出的所有行编号,由1开始对所有输出的行数编号
 
@@ -51,12 +48,12 @@ tag : linux
 例二: cat -n log.txt > test.txt  
 *把log.txt 的文件内容加上行号后输入test.txt 这个文件中* 
 
-###nl
+### nl
 不常用,类似cat -n  
 例一:  nl -b a -n rz gdbtest.c  
 *让行号前面自动补上0,统一输出格式*   
 
-###more
+### more
 参数:  
 >+n      从笫n行开始显示  
 >-n       定义屏幕大小为n行  
@@ -79,7 +76,7 @@ tag : linux
 例二: more +/day test.log  
 *从文件中查找第一个出现"day"字符串的行，并从该处开始显示输出*  
 
-###less
+### less
 参数:  
 >-b <缓冲区大小> 设置缓冲区的大小  
 >-e  当文件显示结束后，自动离开  
@@ -109,9 +106,8 @@ tag : linux
  
 详细用例参考 [linux less](http://www.cnblogs.com/peida/archive/2012/11/05/2754477.html)  
 
-###head 忽略
 
-###tail
+### tail
 参数:  
 >-f 循环读取  
 >-v 显示详细的处理信息		
