@@ -1,0 +1,131 @@
+---
+layout: post
+title: yar的一些笔记
+category: php
+tag : php
+---
+
+今天新来的同事问起公司yar的使用详情, 出于对rpc的一贯印象, 我章口就莱了一句:服务端跑进程...blablabla, 然后感觉不太对劲。 公司的线下服务器挂掉重启的时候, 并没有启动过rpc相关的服务, 所以就查看了下yar的运行方式。 
+
+yar是一个可并行的rpc框架, 与其他框架类似也分为server跟client两部分, 我们先看服务端。 
+
+```
+<?php
+class API {
+    /**
+     * the doc info will be generated automatically into service info page.
+     * @params 
+     * @return
+     */
+    public function some_method($parameter, $option = "foo") {
+    }
+
+    protected function client_can_not_see() {
+    }
+}
+
+$service = new Yar_Server(new API());
+$service->handle();
+?>
+```
+
+服务器端其实一个简单的路由, 实例化Yar_Server时, 将我们传入的内容作为一种服务接口来用, 这里不会有任何进程形式的服务运行, 只是yar对我们models层的接口换了一种调用格式。  特别地yar server只会对post请求返回, 对于非post的请求会返回html格式的文档。 所以其实我们的client的调用就是在调用的http请求, 通过路由导向yar server的入口。 
+
+相关代码:
+
+```
+/* {{{ proto Yar_Server::handle()
+   start service */
+PHP_METHOD(yar_server, handle)
+{
+    if (SG(headers_sent)) {
+		php_error_docref(NULL, E_WARNING, "headers already has been sent");
+        RETURN_FALSE;
+    } else {
+		const char *method;
+        zval *executor, rv;
+
+		executor = zend_read_property(yar_server_ce, getThis(), ZEND_STRL("_executor"), 0, &rv);
+		if (IS_OBJECT != Z_TYPE_P(executor)) {
+			php_error_docref(NULL, E_WARNING, "executor is not a valid object");
+			RETURN_FALSE;
+		}
+
+		method = SG(request_info).request_method;
+		if (!method || strncasecmp(method, "POST", 4)) {
+			if (YAR_G(expose_info)) {
+				php_yar_server_info(executor);
+                RETURN_TRUE;
+			} else {
+				zend_throw_exception(yar_server_exception_ce, "server info is not allowed to access", YAR_ERR_FORBIDDEN);
+				return;
+			}
+		}
+
+		php_yar_server_handle(executor);
+	}
+a
+	RETURN_TRUE;
+}
+```
+
+可以看到中间有关是否post请求的判断  
+
+下面看client, 首先yar client可以进行sync的调用, 这里就跟通常的http没有任何区别了。 为了提供concurrency, yar提供了multicall, 由curl+epoll来完成。 
+
+```
+<?php
+function callback($retval, $callinfo) {
+     var_dump($retval);
+}
+ 
+Yar_Concurrent_Client::call("http://host/api/", "api", array("parameters"), "callback");
+Yar_Concurrent_Client::call("http://host/api/", "api", array("parameters"), "callback");
+Yar_Concurrent_Client::call("http://host/api/", "api", array("parameters"), "callback");
+Yar_Concurrent_Client::call("http://host/api/", "api", array("parameters"), "callback");
+Yar_Concurrent_Client::loop(); //send
+?>
+
+```
+
+call方法会注册一个async的rpc调用, 但是请求不会被立即发出直到调用loop方法后统一发送, 之后系统会阻塞在epoll直到有读事件时读出数据, 然后调用callback。  
+
+截取部分代码, 其余请参考鸟哥的[github](https://github.com/laruence/yar/blob/master/yar_client.c):
+
+```
+int php_yar_concurrent_client_handle(zval *callstack) /* {{{ */ {
+	char *msg;
+	zval *calldata;
+	zend_ulong sequence;
+	yar_request_t *request;
+	const yar_transport_t *factory;
+	yar_transport_interface_t *transport;
+	yar_transport_multi_interface_t *multi;
+
+	factory = php_yar_transport_get(ZEND_STRL("curl"));
+	multi = factory->multi->init();
+	
+	......
+	
+		transport->calldata(transport, entry);
+		multi->add(multi, transport);
+		php_yar_request_destroy(request);
+	} ZEND_HASH_FOREACH_END();
+
+	if (!multi->exec(multi, php_yar_concurrent_client_callback)) {
+		multi->close(multi);
+		return 0;
+	}
+	
+	......
+		
+```
+
+可以看到以curl方式调用, 最终exec会调用php\_yar\_curl\_multi\_exec函数(curl相关的代码在yar/transports)调用epoll模型等待所有数据读到之后再执行callback。 
+
+所以yar跟我当时想象中的yar区别还是蛮大的, 有点汗颜用了一年多的框架直到今天才了解。 两点总结:  
+
+* yar可以抛离server的定义只用client, 前提是定义好路由  
+* 我司的调用好像只有sync的模式...  
+
+
