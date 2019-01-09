@@ -34,7 +34,7 @@ $service->handle();
 相关代码:
 
 ```
-/* {{{ proto Yar_Server::handle()
+/* proto Yar_Server::handle()
    start service */
 PHP_METHOD(yar_server, handle)
 {
@@ -93,7 +93,7 @@ call方法会注册一个async的rpc调用, 但是请求不会被立即发出直
 截取部分代码, 其余请参考鸟哥的[github](https://github.com/laruence/yar/blob/master/yar_client.c):
 
 ```
-int php_yar_concurrent_client_handle(zval *callstack) /* {{{ */ {
+int php_yar_concurrent_client_handle(zval *callstack) {
 	char *msg;
 	zval *calldata;
 	zend_ulong sequence;
