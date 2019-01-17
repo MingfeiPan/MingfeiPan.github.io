@@ -258,7 +258,7 @@ Tie.loader("aHR0cHM6Ly9hcGkuZ2VudGllLjE2My5jb20vcGMvbGl2ZXNjcmlwdC5odG1s", true)
 {% if site.anchorjs %}
 <!-- async load function -->
 <script>
-    function async(u, c) {
+    function later(u, c) {
       var d = document, t = 'script',
           o = d.createElement(t),
           s = d.getElementsByTagName(t)[0];
@@ -269,7 +269,7 @@ Tie.loader("aHR0cHM6Ly9hcGkuZ2VudGllLjE2My5jb20vcGMvbGl2ZXNjcmlwdC5odG1s", true)
 </script>
  
 <script>
-    async("http://cdn.bootcss.com/anchor-js/1.1.1/anchor.min.js",function(){
+    later("http://cdn.bootcss.com/anchor-js/1.1.1/anchor.min.js",function(){
         anchors.options = {
           visible: 'always',
           placement: 'right',
