@@ -29,7 +29,7 @@ $service->handle();
 ?>
 ```
 
-服务器端其实一个简单的路由, 实例化Yar_Server时, 将我们传入的内容作为一种服务接口来用, 这里不会有任何进程形式的服务运行, 只是yar对我们models层的接口换了一种调用格式。  特别地yar server只会对post请求返回, 对于非post的请求会返回html格式的文档。 所以其实我们的client的调用就是在调用的http请求, 通过路由导向yar server的入口。 
+服务器端就是一个简单的路由, 实例化Yar_Server时, 将我们传入的内容作为一种服务接口来用, 这里不会有任何进程形式的服务运行, 只是yar对我们models层的接口换了一种调用格式。  特别地yar server只会对post请求返回, 对于非post的请求会返回html格式的文档。 所以其实我们的client的调用就是在调用的http请求, 通过路由导向yar server的入口。 
 
 相关代码:
 
