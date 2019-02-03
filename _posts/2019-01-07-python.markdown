@@ -25,7 +25,7 @@ Range objects继承自Sequence, 是一个iterable, 所以他有\_\_iter\_\_()方
 
 对iterable 调用iter()会返回一个iterator, iterator必须支持\_\_next\_\_()方法, 而iterable是不能有\_\_next\_\_()方法的。 
 
-iterable的\_\_iter\_\_()方法返回一个iterator, 因为我们期望一个可迭代的对象可以支持多种遍历, 所以每次都可以从iterable获得一个新的iterator, 而iterator的\_\_iter\_\_()返回self也就是他自己, 直观上他也只能遍历一次, 在抛出StopIteration后结束。  
+iterable的\_\_iter\_\_()方法返回一个iterator, 因为我们期望一个可迭代的对象可以支持多种遍历, 所以每次都可以从iterable获得一个新的iterator, 而iterator的\_\_iter\_\_()返回self也就是他自己, 只能遍历一次, 访问过末尾元素后抛出StopIteration退出。  
 
 
 所以其实最简单的区别就是在于\_\_next\_\_()方法, iterable是不能实现这个方法的, 也就根本上决定了他跟iterator的区别, 而range是一个sequence对象, 是一个iterable。  
