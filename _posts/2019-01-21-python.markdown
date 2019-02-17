@@ -4,3 +4,57 @@ title:  continuation的一些笔记
 category: python
 tag : python
 --- 
+
+
+### continuation 
+
+大学时上过一门haskell课, 算是摸了摸fp的门, 一直觉得fp太过深奥, 没什么深入了解。 前不久看sicp, 接触了下scheme, 好多陌生概念continuation, call/cc, cps一类的都算是有所了解, 当然只是一个命令式程序员的入门, 并未牵扯到很多丰富理论, 基本是一些基础知识, 这里记录一些心得跟笔记。 
+
+continuation(延续), 是一种表示程序运行中某个指定位置计算过程的数据结构, continuation会保存程序执行的当前状态, 再调用时会从之前保存的位置恢复执行。 在c中函数调用时要依赖于栈, 每一级stack frame(栈帧), 每一级栈帧都会存放局部变量, 寄存器信息的相关context。continuation机制利用continuation record存放上下文信息, 所以records也不会依赖于栈, 函数跳转时context会在records之前移动, 函数退出后records删除由garbage collection来管理(c中如果函数返回则由栈来处理这些context资源)。 利用continuation函数调用可以不再依赖于栈结构, 再跳转时也可以脱离固定的层级return模式。 
+
+### uses  
+
+摆脱固有的栈调用是continuation第一步, 如果我们单步考虑一个scheme借助first-class continuation机制(call/cc)实现其他语言中的控制结构, 比如return, break, exception等等, 除此之外continuation还可以实现其他很多控制流相关的内容, coroutines, micro threads(还记得stackless python吗)。
+
+### call/cc
+
+call/cc(call-with-current-continuation)是scheme利用first-class continuation的机制。在scheme中, call/cc可以在任意点保存执行状态并且在之后的某个点返回(注意first-class所保证的任意点甚至包括作为函数的参数, 组合利用可以做出很多惊人的结构, 例如wiki上的那个yinyang-puzzle)  
+
+```
+(... (call/cc (lambda (cc) 
+                      (<body>))) ...)
+```
+
+使用时, 当前的continuation会作为cc的实参传入, 对这个lambda求值, 即相当于对cc也就是这个continuation在\<body\>里求值, 如果\<body\>内部调用执行了cc, 那么整个表达式就是cc的结果, 不需要再关心\<body\>内的其他操作, 直接返回作为表达式的结果。如果在\<body\>内没用调用到cc, 那就正常计算出表达式结果。 
+ 
+```
+> (define (f return) (return 2) (+ 5 4))
+
+> (f (lambda (x) x)))
+;Value: 9
+
+>(call-with-current-continuation f)
+;Value: 2
+
+```
+
+[更多例子可以参考wiki](https://en.wikipedia.org/wiki/Call-with-current-continuation)  
+
+### cps
+
+[cps](https://en.wikipedia.org/wiki/Continuation-passing_style)(continuation-passing-style)也是contination相关的一个概念, 当函数需要返回的时候, 不直接返回, 而是接受一个叫做continuation的参数, 这个参数是一个call-back函数, 它接受之前的返回值, 并做下一步计算。 可以借助这一点实现一种无栈函数调用。 
+
+
+```
+def foo(a):
+	return a+1
+
+#cps写法传入下一步调用的函数c, 调用c而不是return这一步结果
+def foo(a, c):
+	c(a+1)
+	
+```
+
+
+
+
