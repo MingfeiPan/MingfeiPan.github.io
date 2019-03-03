@@ -1,0 +1,112 @@
+---
+layout: post
+title:  amqp 0-9-1 基础概念是速查
+category: rabbitmq
+tag : rabbitmq
+--- 
+
+#### basic  
+
+messages are published to exchanges, which are often compared to post offices or mailboxes. Exchanges then distribute message copies to queues using rules called bindings. Then the broker either deliver messages to consumers subscribed to queues, or consumers fetch/pull messages from queues on demand  
+
+#### exchanges  
+
+Exchanges are AMQP 0-9-1 entities where messages are sent. Exchanges take a message and route it into zero or more queues. The routing algorithm used depends on the exchange type and rules called bindings. 
+
+##### exchanges attributes :  
+
+* Name 
+* Durability(durable if exchanges survive when broker restarts, transient when not)  
+* Auto-delete(exchange is deleted when last queue is unbound from it)  
+* Arguments(optional, used by plugins and broker-specific features)  
+
+##### exchanges types :
+
+* default exchanges: a direct exchange with no name pre-declared by the broker. In default, it is quite useful for simple applications: every queue that is created is automatically bound to it with a routing key which is the same as the queue name. For example, when you declare a queue with the name of "example", the AMQP 0-9-1 broker will bind it to the default exchange using "example" as the routing key(binding key). Therefore, a message published to the default exchange with the routing key "example" will be routed to the queue "example". In other words, the default exchange makes it seem like it is possible to deliver messages directly to queues, even though that is not technically what is happening.
+* direct exchanges: A direct exchange delivers messages to queues based on the message routing key(unicast). A queue binds to the exchange with a routing key K, When a new message with routing key R arrives at the direct exchange, the exchange routes it to the queue if K = R. 
+* fanout exchanges: A fanout exchange routes messages to all of the queues that are bound to it and the routing key is ignored(broadcast).  
+* topic exchanges: Topic exchanges route messages to one or many queues based on matching between a message routing key and the pattern that was used to bind a queue to an exchange(multicast).  
+* headers exchanges: A headers exchange is designed for routing on multiple attributes that are more easily expressed as message headers than a routing key. Headers exchanges ignore the routing key attribute. Headers exchanges can be looked upon as "direct exchanges on steroids". Because they route based on header values, they can be used as direct exchanges where the routing key does not have to be a string; it could be an integer or a hash (dictionary) for example.  
+
+
+#### Queues
+
+Queues store messages that are consumed by applications. 
+
+##### queue attributes : 
+
+* Name  
+* Durable(the queue will survive a broker restart) 
+* Exclusive(used by only one connection and the queue will be deleted when that connection closes) 
+* Auto-delete(queue that has had at least one consumer is deleted when last consumer unsubscribes)  
+* Arguments(optional; used by plugins and broker-specific features such as message TTL, queue length limit, etc)  
+
+
+#### Bindings  
+
+Bindings are rules that exchanges use to route messages to queues. To instruct an exchange E to route messages to a queue Q, Q has to be bound to E. The purpose of the routing key is to select certain messages published to an exchange to be routed to the bound queue. In other words, the routing key acts like a filter.  
+
+If AMQP message cannot be routed to any queue (for example, because there are no bindings for the exchange it was published to) it is either dropped or returned to the publisher, depending on message attributes the publisher has set.  
+
+#### Consumers  
+
+* Have messages delivered to them(push API)
+* Fetch messages as needed(pull API)  
+
+#### Message Acknowledgements  
+
+Networks are unreliable and applications may fail to process messages therefore the AMQP 0-9-1 model has a notion of message acknowledgements: when a message is delivered to a consumer the consumer notifies the broker, either automatically or as soon as the application developer chooses to do so. When message acknowledgements are in use, a broker will only completely remove a message from a queue when it receives a notification for that message (or group of messages).
+
+In certain situations, for example, when a message cannot be routed, messages may be returned to publishers, dropped, or, if the broker implements an extension, placed into a so-called "dead letter queue". Publishers choose how to handle situations like this by publishing messages using certain parameters.
+
+Queues, exchanges and bindings are collectively referred to as AMQP entities.
+
+Consumer applications – applications that receive and process messages – may occasionally fail to process individual messages or will sometimes just crash. There is also the possibility of network issues causing problems. Two choices of the AMQP broker removing messages from queues:  
+
+* automatic acknowledgement model, After broker sends a message to an application(using either basic.deliver or basic.get-ok AMQP methods)  
+*  explicit acknowledgement model, After the application sends back an acknowledgement(using basic.ack AMQP method)  
+
+#### Rejecting Messages  
+
+When a consumer application receives a message, processing of that message may or may not succeed. An application can indicate to the broker that message processing has failed (or cannot be accomplished at the time) by rejecting a message. When rejecting a message, an application can ask the broker to discard or requeue it. When there is only one consumer on a queue, make sure you do not create infinite message delivery loops by rejecting and requeueing a message from the same consumer over and over again.  
+
+#### Negative Acknowledgements  
+
+Messages are rejected with the basic.reject AMQP method. There is one limitation that basic.reject has: there is no way to reject multiple messages as you can do with acknowledgements. However, if you are using RabbitMQ, then there is a solution. RabbitMQ provides an AMQP 0-9-1 extension known as negative acknowledgements or nacks.  
+
+AMQP 0-9-1 has a built-in feature called message acknowledgements (sometimes referred to as acks) that consumers use to confirm message delivery and/or processing. If an application crashes (the AMQP broker notices this when the connection is closed), if an acknowledgement for a message was expected but not received by the AMQP broker, the message is re-queued (and possibly immediately delivered to another consumer, if any exists).
+
+#### Message Attributes  
+
+Messages in the AMQP model have attributes, Some attributes are so common that the AMQP 0-9-1 specification defines them(Content type, Content encoding, Routing key). Some attributes are used by AMQP brokers. Some attributes are optional and known as headers(similar to X-Headers in HTTP). Message attributes are set when a message is published.  
+
+#### Message Payload  
+
+AMQP brokers treat payload as an opaque byte array and will not inspect or modify the it. It is possible for messages to contain only attributes and no payload. It is common to use serialisation formats like JSON, Thrift, Protocol Buffers and MessagePack to serialize structured data in order to publish it as the message payload.   
+
+#### Message Persistence  
+
+Messages may be published as persistent, which makes the AMQP broker persist them to disk. If the server is restarted the system ensures that received persistent messages are not lost. Simply publishing a message to a durable exchange or the fact that the queue(s) it is routed to are durable doesn't make a message persistent: it all depends on persistence mode of the message itself. Publishing messages as persistent affects performance.  
+
+#### Connections  
+
+AMQP 0-9-1 connections are typically long-lived. AMQP 0-9-1 is an application level protocol that uses TCP for reliable delivery. Connections use authentication and can be protected using TLS. When an application no longer needs to be connected to the server, it should gracefully close its AMQP 0-9-1 connection instead of abruptly closing the underlying TCP connection.  
+
+#### Channels  
+
+Some applications need multiple connections to the broker. However, it is undesirable to keep many TCP connections open at the same time because doing so consumes system resources and makes it more difficult to configure firewalls. AMQP 0-9-1 connections are multiplexed with channels that can be thought of as "lightweight connections that share a single TCP connection".  
+
+Every protocol operation performed by a client happens on a channel. Communication on a particular channel is completely separate from communication on another channel, therefore every protocol method also carries a channel ID (a.k.a. channel number), an integer that both the broker and clients use to figure out which channel the method is for.  
+
+A channel only exists in the context of a connection and never on its own. When a connection is closed, so are all channels on it.  
+
+For applications that use multiple threads/processes for processing, it is very common to open a new channel per thread/process and not share channels between them.  
+
+#### Virtual Hosts  
+
+To make it possible for a single broker to host multiple isolated "environments" (groups of users, exchanges, queues and so on), AMQP includes the concept of virtual hosts (vhosts). They are similar to virtual hosts used by many popular Web servers and provide completely isolated environments in which AMQP entities live. AMQP clients specify what vhosts they want to use during AMQP connection negotiation.   
+
+
+
+
+
