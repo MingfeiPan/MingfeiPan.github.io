@@ -1,6 +1,6 @@
 ---
 layout: post
-title:  amqp 0-9-1 基础概念是速查
+title:  amqp 0-9-1 基础概念速查
 category: rabbitmq
 tag : rabbitmq
 --- 
