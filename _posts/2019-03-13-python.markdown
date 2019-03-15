@@ -1,0 +1,81 @@
+---
+layout: post
+title:  python3 处理字符编码的一些姿势 
+category: python
+tag : python
+--- 
+
+
+### unicode字符串与字节序列  
+
+很久之前写过unicode编码相关的一篇笔记, 今天又重过了一遍python3中相关的东西, 做些记录。  
+
+我一直觉得把unicode字符串, 字节序列, str对象这几个概念简单化是python3比python2最爽的一块。 python3中str对象就是unicode字符串, str编码后即时字节序列bytes sequences。用起来基本不会撞坑。  
+
+```
+>>> s = "峰哥牛逼"
+>>> len(s)
+4
+>>> bs = s.encode('utf-8')
+>>> bs
+b'\xe5\xb3\xb0\xe5\x93\xa5\xe7\x89\x9b\xe9\x80\xbc'
+>>> len(bs)
+12
+>>> bs.decode('utf-8')
+'峰哥牛逼'
+
+```
+
+python3把unicode字符串变成字节序列的过程是encode(编码), 把字节序列变成unicode字符串的过程是decode(解码)。  
+
+几种常见的编码:  
+
+* latin1(iso8859_1), 经常见到的一种编码, 我一直觉得这个不是常规使用的编码, 然而latin1是很多其他编码的基础(例如cp1252跟unicode)  
+* gb2312, 国标..., 用于编码简体中文的, 这个也很常见  
+* utf-8, 目前最通用的编码, 可以与ascii兼容  
+
+`utf-8是python3默认使用的编码源码, 与此同时python2则为ascii`
+
+### chardetect  
+
+chardetect是一个识别某个字节序列编码的工具, 我们知道除了某些特定协议下的序列, 很多无序的字节序列是看不出编码的, chardetect利用一些特殊序列可以做出一些概率上的识别, python也有这个包Chardet  
+
+```
+#test.py
+def main():
+	a = '测试'
+
+if __name__ == '__main__':
+	main()
+
+>chardetect test.py
+>test.py: utf-8 with confidence 0.7525
+
+#test.py
+def main():
+	a = 'aa'
+
+if __name__ == '__main__':
+	main()
+
+>chardetect test.py
+>test.py: ascii with confidence 1.0
+
+```  
+
+### 处理文本文件的最佳实践  
+
+《流畅的python》里给出了这样一个过程:  
+
+<img src="/img/in-post/unicode_sandwich.png">
+
+在做文件io或者socket io的编程时: 
+
+* 要尽早把输入的字节序列解码成字符串  
+* 在业务逻辑时只处理字符串对象  
+* 输出时, 尽晚把输出的字符串编码成字节序列  
+
+最后还有一个tip:  
+`打开写入读取文件时, 一定要手动标注编码(通常为utf-8), 使用默认编码会在某些系统上出现重大问题`  
+
+
