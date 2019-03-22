@@ -7,11 +7,14 @@ tag : rabbitmq
 
 ### basic  
 
-messages are published to exchanges, which are often compared to post offices or mailboxes. Exchanges then distribute message copies to queues using rules called bindings. Then the broker either deliver messages to consumers subscribed to queues, or consumers fetch/pull messages from queues on demand  
+messages are published to exchanges, which are often compared to post offices or mailboxes. Exchanges then distribute message copies to queues using rules called bindings. Then the broker either deliver messages to consumers subscribed to queues, or consumers fetch/pull messages from queues on demand.  
+
+Queues, exchanges and bindings are collectively referred to as AMQP entities.
 
 ### exchanges  
 
-Exchanges are AMQP 0-9-1 entities where messages are sent. Exchanges take a message and route it into zero or more queues. The routing algorithm used depends on the exchange type and rules called bindings. 
+Exchanges are AMQP 0-9-1 entities where messages are sent. Exchanges take a message and route it into zero or more queues. The routing algorithm used depends on the exchange type and rules called bindings.
+The core idea in the messaging model in RabbitMQ is the producer can only send messages to an exchange. An exchange is a very simple thing. On one side it receives messages from producers and the other side it pushes them to queues 
 
 ### exchanges attributes :  
 
@@ -63,7 +66,6 @@ Networks are unreliable and applications may fail to process messages therefore 
 
 In certain situations, for example, when a message cannot be routed, messages may be returned to publishers, dropped, or, if the broker implements an extension, placed into a so-called "dead letter queue". Publishers choose how to handle situations like this by publishing messages using certain parameters.
 
-Queues, exchanges and bindings are collectively referred to as AMQP entities.
 
 Consumer applications – applications that receive and process messages – may occasionally fail to process individual messages or will sometimes just crash. There is also the possibility of network issues causing problems. Two choices of the AMQP broker removing messages from queues:  
 
