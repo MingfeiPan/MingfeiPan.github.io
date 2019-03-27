@@ -1,0 +1,106 @@
+---
+layout: post
+title:  强/弱类型, 动态/静态类型  
+category: programming language
+tag : programming language
+--- 
+
+### 程序设计语言类型   
+
+写了几年程序, 主要围绕在php跟python上, 知道他们都属于弱类型, 动态类型语言。 自然而然的把c, c++归为强类型, 静态类型语言。 最近接触了一些相关内容, 才知道错大了。 很多人的认知受到了类型声明, 已经编译型/非编译型语言的惯性误导。 举个例子: c++其实是弱类型的, 但是很多声称教程的帖子里, 很坚定的称其为强类型语言。  
+
+### 一些误区 
+
+* c语言使用变量需要声明类型 int a, 而python不需要, 所以c语言是静态而python是动态(错误, c语言确实是静态, 但不是因为这个)。  
+* 动态类型的语言往往是弱类型, 而静态类型往往是强类型(这也是完全错误的, 比如python是动态类型, 强类型)  
+* 需要声明类型的就是静态类型, 比如c语言中的int a(错, 静态/动态的定义核心并不在这里)    
+
+先贴一张总结图:  
+
+<img src="/img/in-post/types.jpg">  
+
+
+
+### 理论理解   
+
+下面的内容来自[这个回答](https://www.zhihu.com/question/19918532) 
+
+需要先定义一些基础概念:  
+
+#### Program Errors  
+
+* trapped errors, 导致程序终止执行, 类似除0, 数组越界这种操作  
+* untrapped errors, 出错后继续执行, 但可能出现任意行为, 如C里的缓冲区溢出   
+
+#### Forbidden Behaviours  
+
+* 语言定义一组forbidden behaviors, 它必须包括所有untrapped errors,  但可能包含trapped errors  
+
+#### well behaved  
+
+* 如果程序执行不可能出现forbidden behaviors, 则为well behaved 
+
+#### ill behaved  
+
+* 程序执行出现非Well behaved   
+
+强/弱类型, 动态/静态类型跟要不要声明变量其实没有什么关系, 而是跟上述几条相关. 
+
+#### 强类型strongly typed  
+
+* 如果一种语言的所有程序都是well behaved——即不可能出现forbidden behaviors, 则该语言为strongly typed    
+
+#### 弱类型weakly typed  
+
+* 否则为weakly typed, 比如C语言的缓冲区溢出, 属于untrapped errors, 即属于forbidden behaviors, 所以C是弱类型    
+
+`一般来说弱类型语言, 类型检查更不严格, 比如c容忍隐式类型转换, 容易产生forbidden behaviors, 所以c是弱类型的`  
+
+#### 静态类型 statically  
+
+* 如果在编译时拒绝ill behaved程序, 则是statically typed  
+
+#### 动态类型dynamiclly  
+
+* 如果在运行时拒绝ill behaviors, 则是dynamiclly typed  
+
+`可以粗糙区分编译时/运行时进行type check`  
+
+
+我们知道c语言是在编译时进行type check的, 所以他是静态类型, 而不是因为他需要显式声明类型(explicitly typed), 有一些不需要显式声明类型的语言也属于静态类型, 比如Ocaml(静态隐式类型, 完全没听说过这个语言...)。 我们也可以让php提供type hint, 但是php仍旧不是statically checked, 因为他是在运行时才去做check。  
+
+下面有几个代码的例子:  
+
+php弱类型的典型特征:  
+
+```
+php > echo "1" + 2;
+3
+```
+
+python 强类型的典型特征:
+
+```
+>>> "1" + 2
+Traceback (most recent call last):
+  File "<stdin>", line 1, in <module>
+TypeError: must be str, not int
+>>> 
+```  
+
+### 粗糙理解  
+
+抛开上面的名词解释, 通俗宽泛的说:  
+
+* 强类型, 偏向于不容忍隐式类型转换, 比如java, python  
+* 弱类型, 偏向于容忍隐式类型转换, 比如c  
+* 静态类型, 指的是编译器在compile time执行类型检查, 比如c 
+* 动态类型, 指的是解释器(编辑器+虚拟机)在runtime执行类型检查, 比如php
+
+
+
+
+
+
+
+
