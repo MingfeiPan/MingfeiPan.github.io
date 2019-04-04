@@ -108,6 +108,9 @@ page2:
 
 `在索引上加一个unique的字段作为辅助查询条件(比如自增的主键id)`  
 
+利用我们之前建立的索引  KEY `thumb_up` (`thumb_ups`,`id`)  
+
+
 page1:
 
 ```
