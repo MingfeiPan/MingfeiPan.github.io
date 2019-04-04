@@ -1,0 +1,134 @@
+---
+layout: post
+title:  mysql 分页方案优化方案  
+category: mysql
+tag : mysql
+--- 
+
+ 
+
+来自大佬微博的[一个问题](https://weibo.com/1840408525/EqLpNbfol?filter=hot&root_comment_id=0&type=comment), Percona Live 2009里有一篇相关介绍 [《Efficient Pagination Using MySQL》](https://www.percona.com/live/santa-clara-2009), 写的很好, 不过percona内的链接好像已经挂了。[这里有一个可用的slide](https://www.slideshare.net/Eweaver/efficient-pagination-using-mysql), [这里有一个可用的视频](https://www.youtube.com/watch?v=B6iNuEuD-gc)(口音感人)。
+
+其实核心就是在大量数据做分页时, 避免使用offset。 而是借助索引来确定位置, 返回索引序列(自增id为最佳)中的每页内容。 
+
+### 索引 
+
+简单回顾一下索引使用: 
+
+key a_b_c (a, b, c)
+
+order用到key a\_b\_c的用例:  
+
+* order by a 
+* order by a, b
+* order by a, b ,c
+* order by a desc, b desc, c desc 
+
+where+order用到key a\_b\_c的用例:  
+
+* where a = const order by b, c  
+* where a = const and b = const order by c 
+* where a = const order by b, c
+
+order 用不到key的用例(会导致file sort):  
+
+* order by a asc, b desc, c desc (排序顺序混乱)  
+
+要根据索引的数据结构规则, 合理利用索引, 找到确保命中索引的order使用方式。 
+
+### offset 
+
+方便演示, 先构造一个5m数据量的message表:  
+
+```
+CREATE TABLE `message` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `thumb_ups` int(11) NOT NULL DEFAULT '0',
+  `title` varchar(255) NOT NULL DEFAULT '',
+  PRIMARY KEY (`id`),
+  KEY `thumb_up` (`thumb_ups`,`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+```
+传统的查询, 我们通常会构造类似的语句:  
+
+```
+#page1
+select * from message order by id desc limit 0, 20
+
+#page2
+select * from message order by id desc limit 20, 20
+
+#page3
+select * from message order by id desc limit 40, 20
+
+...
+select * from message order by id desc limit 200000, 20
+```
+
+| offset | query time |
+| ------ | ------ |  
+| 200k | 117ms |
+| 2m | 814ms |  
+
+不断增大的offset, 会使查询时间线性增长, 虽然最终返回的都是20行内容, 但是足足要检查掉前面所有的行数。这种时间过长的查询绝对是正常业务不能接受的, 也会影响到mysql整体运行效率。   
+
+<img src="/img/in-post/mysqloffset.png">  
+
+### 改进    
+
+我们的改进方案就是, 单纯的用limit限制每页数量, 绕过offset。 本例中如果要查询2m数据后的20条数据, sql改为:  
+
+```
+select * from message where id > 2000000 order by id desc limit 20;
+```
+
+执行时间只需要4.1ms, 每次请求时都带上目前查询到的id, 根据id来控制where的范围, 这样就可以避免盲目的offset。 
+
+### order by non-unique values  
+
+利用自增的主键id做where条件是一个很自然的事情, 也很简单, 不会出现漏数据的情况, 因为单个id不会重复。 但是具体查询时, 我们往往需要根据那些有重复字段来排序的, 比如时间, 还有上面message表里的thumb_ups(点赞数), 这时单纯的通过where大于小于一定会出现漏数据的情况。 这也是大佬微博问题的核心: "火丁笔记：注意 updated_at 有可能有重复值哦"  
+
+比如下面这种情况: 
+
+page1:
+
+<img src="/img/in-post/mysqlpage.png">  
+
+page2:
+
+<img src="/img/in-post/mysqlpage1.png">  
+
+因为每页的数量固定, 单纯用点赞数98, 97, 96来分隔会出现漏数据的情况, 这种情况的处理方式:  
+
+`在索引上加一个unique的字段作为辅助查询条件(比如自增的主键id)`  
+
+page1:
+
+```
+select * from message order by thumb_ups desc, id desc limit 5;
+```
+
+<img src="/img/in-post/mysqlret.png">  
+
+这时我们不确定点赞数为98的是否已经被查询完了, 所以下一步sql需要加上id的判断:  
+
+```
+select * from message where thumb_ups <= 98 and (id < 254 or thumb_ups < 98) order by thumb_ups desc, id desc limit 5 
+
+```
+<img src="/img/in-post/mysqlret1.png">  
+
+通过unique id的限制保证分页不遗漏数据。  
+
+### 总结  
+
+基本上数据量大的分页查询, 避开使用offset会带来10倍左右的性能提升, 合理利用where+order+unqiue key 就可以达成这样的效果。 
+
+
+### 额外好处  
+
+如果用户在翻页时, 页面新插入的数据, 那么传统offset因为每次都是按全局数据总数来分页的, 就会导致翻页出现重复数据。 而利用unique key where的翻页查询, 还可以避免这个现象。  
+
+
+
