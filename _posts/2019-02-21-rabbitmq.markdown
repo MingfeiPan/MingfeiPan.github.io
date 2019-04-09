@@ -106,6 +106,8 @@ Every protocol operation performed by a client happens on a channel. Communicati
 
 A channel only exists in the context of a connection and never on its own. When a connection is closed, so are all channels on it.  
 
+Channels also consume resources in both client and server. Applications should minimize the number of channels they use when possible and close channels that are no longer necessary. Channels, like connections, are meant to be long lived.  
+
 For applications that use multiple threads/processes for processing, it is very common to open a new channel per thread/process and not share channels between them.  
 
 ### Virtual Hosts  
