@@ -5,24 +5,28 @@ category: rabbitmq
 tag : rabbitmq
 --- 
 
-### pika consume callback user-defined parameters
+### pika consume callback user-defined parameters  
 
-pika consumer端的callback方法默认给了4个参数, 如果用户想加自定义参数, 直接写入callback方法是不可以的。 python中有两种曲线救国的方法: lambda或者functools.partial 
+pika consumer端的callback方法默认给了4个参数, 如果用户想加自定义参数, 直接写入callback方法是不可以的。 python中有两种曲线救国的方法: lambda或者functools.partial   
 
-lambda:  
+lambda:   
+
 
 ```
 channel.basic_consume(lambda ch, method, properties, body :  callback_with_arguments(ch, method, properties, body, fp=fp), queue=queue_name)
 
 ```
 
-functools.partial:  
+
+functools.partial:   
+
 
 ```
 callback = functools.partial(callback_with_arguments, fp=fp)
 channel.basic_consume(callback, queue=queue_name, no_ack=True)
 
 ```
+
 
 再定义callback_with_arguments:  
 
