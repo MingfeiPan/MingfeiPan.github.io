@@ -19,11 +19,11 @@ True
 4382039984
 ```
 
-上面这一段代码很奇怪, 我们直接创建了两个对象, 分别赋予了变量s1, s2。 并没有给s1, s2任何引用关系, 然而s1, s2的标识相同。 这里cpython越过了普通语法规则, 利用[string interning](https://en.wikipedia.org/wiki/String_interning)(字符串驻留)来做了一些性能优化, 防止重复创建热门的string(也包括数字).  
+上面这一段代码很奇怪, 我们直接创建了两个对象, 分别贴上"标签"变量s1, s2。 并没有给s1, s2任何引用关系, 然而s1, s2的标识相同。 原因是这里cpython越过了普通语法规则, 利用[string interning](https://en.wikipedia.org/wiki/String_interning)(字符串驻留)来做了一些性能优化, 防止重复创建热门的string(也包括数字).  
 
 `In computer science, string interning is a method of storing only one copy of each distinct string value, which must be immutable`  
 
-这是wiki上的第一句, 要求变量必须是immutable, 在cpython下类型有字符串以及整形, 比如热门数字0,1.  
+这是wiki上的第一句, 要求变量必须是immutable, 在cpython下类型有字符串以及整型, 比如热门数字0,1.  
 
 第二段代码:  
 
@@ -83,6 +83,9 @@ all_name_chars(PyObject *o)
 }
 ```
 
+`关键方法PyUnicode_IS_ASCII()`  
+
+
 第三段代码:  
 
 ```
@@ -92,7 +95,7 @@ True
 
 ```
 
-这回a, b又都指向同一个对象了, 原因是: 当a , b = ... 的语句在同一行时,  python interpreter 会创建一个新的对象"some_thing!", 会直接将第二个变量"贴在"这个对象。  
+这回a, b又都指向同一个对象了, 又乱回来了。 这次的原因是: 当a , b = ... 的语句在同一行时,  python interpreter 会创建一个新的对象"some_thing!", 会直接将第二个变量"贴在"这个对象。 就不存在驻留这种case发生了。  
 
 利用gc模块观察: 
 
