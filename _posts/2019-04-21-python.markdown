@@ -1,0 +1,107 @@
+---
+layout: post
+title:  cpython 中的 string interning
+category: python
+tag : python
+--- 
+
+
+一段代码:  
+
+```
+>>> s1 = "some_thing"
+>>> s2 = "some_thing"
+>>> s1 is s2
+True
+>>> id(s1)
+4382039984
+>>> id(s2)
+4382039984
+```
+
+上面这一段代码很奇怪, 我们直接创建了两个对象, 分别赋予了变量s1, s2。 并没有给s1, s2任何引用关系, 然而s1, s2的标识相同。 这里cpython越过了普通语法规则, 利用[string interning](https://en.wikipedia.org/wiki/String_interning)(字符串驻留)来做了一些性能优化, 防止重复创建热门的string(也包括数字).  
+
+`In computer science, string interning is a method of storing only one copy of each distinct string value, which must be immutable`  
+
+这是wiki上的第一句, 要求变量必须是immutable, 在cpython下类型有字符串以及整形, 比如热门数字0,1.  
+
+第二段代码:  
+
+```
+>>> s1 = "some_thing!"
+>>> s2 = "some_thing!"
+>>> s1 is s2
+False
+>>> id(s1)
+4382039984
+>>> id(s2)
+4382056496
+
+```
+
+但是这个例子里, string interning似乎又消失了, 是因为字符串长度有限制么?  
+
+```
+>>> s2 = "some_thing_some"
+>>> s1 = "some_thing_some"
+>>> s1 is s2
+True
+
+```
+
+并不是, 原因在于cpython的interning准则:  
+
+* 长度为0与1的字符串一定会被驻留  
+* 字符串驻留发生在程序编译时  
+* 被驻留的字符串必须由ascii 字母, 数字以及下划线组成('!'超出了范围)  
+
+具体方法:  
+
+```
+static int
+all_name_chars(PyObject *o)
+{
+    static char ok_name_char[256];
+    static const unsigned char *name_chars = (unsigned char *)NAME_CHARS;
+    const unsigned char *s, *e;
+
+    if (!PyUnicode_IS_ASCII(o))
+        return 0;
+
+    if (ok_name_char[*name_chars] == 0) {
+        const unsigned char *p;
+        for (p = name_chars; *p; p++)
+            ok_name_char[*p] = 1;
+    }
+    s = PyUnicode_1BYTE_DATA(o);
+    e = s + PyUnicode_GET_LENGTH(o);
+    while (s != e) {
+        if (ok_name_char[*s++] == 0)
+            return 0;
+    }
+    return 1;
+}
+```
+
+第三段代码:  
+
+```
+>>> a, b = "some_thing!", "some_thing!"
+>>> a is b
+True
+
+```
+
+这回a, b又都指向同一个对象了, 原因是: 当a , b = ... 的语句在同一行时,  python interpreter 会创建一个新的对象"some_thing!", 会直接将第二个变量"贴在"这个对象。  
+
+利用gc模块观察: 
+
+```
+>>> import gc
+>>> a, b = "some_thing!", "some_thing!"
+>>> gc.get_referrers(a)
+[{'__name__': '__main__', '__doc__': None, '__package__': None, '__loader__': <class '_frozen_importlib.BuiltinImporter'>, '__spec__': None, '__annotations__': {}, '__builtins__': <module 'builtins' (built-in)>, 'gc': <module 'gc' (built-in)>, 'a': 'some_thing!', 'b': 'some_thing!'}]
+
+```
+
+
