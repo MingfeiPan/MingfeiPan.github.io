@@ -134,7 +134,7 @@ output:
 
 更巧合的是python的协程包asyncio基本完成于python3.4, 这也导致lib代码里使用了大量的yield from, 一直留到现在, 但其实yield from在python3.5之后就被await关键字取代了, 记得阅读asyncio lib代码时还专门去看了python3.7仍旧有大量yield from使用。  
 
-《流畅的python》这本书完成于2015年, 在那个时间前后, python3.5新加入了关键字asnyc/await来取代旧的yield from, 由[PEP-492](https://www.python.org/dev/peps/pep-0492/#async-await)提出, 书中作者在介绍yield from时多次提到了新语法的动向, 很明显能看出来他对yield from语法颇有微词, 原话是:"The introduction of yield from is particularly worrying"(p415)。其实如果书能晚写完个半年, 作者就能把async/await的内容加上去了, 书里对携程的介绍也能更加完满。不过不管怎么样今天的python已经可以完美使用async/await来实现协程了。
+《流畅的python》这本书完成于2015年, 在那个时间前后, python3.5新加入了关键字asnyc/await来取代旧的yield from, 由[PEP-492](https://www.python.org/dev/peps/pep-0492/#async-await)提出, 书中作者在介绍yield from时多次提到了新语法的动向, 很明显能看出来他对yield from语法颇有微词, 原话是:"The introduction of yield from is particularly worrying"(p415)。其实如果书能晚写完个半年, 作者就能把async/await的内容加上去了, 书里对协程的介绍也能更加完满。不过不管怎么样今天的python已经可以完美使用async/await来实现协程了。
 
 ### async/await  
 
