@@ -1,0 +1,112 @@
+---
+layout: post
+title:  python concurrent.futures 的一些笔记 
+category: python
+tag : python
+--- 
+
+### 引言  
+
+`应用程序员面对线程时, 99%的情况下只需要知道如何派生一堆独立的线程, 然后用队列收集结果` 
+
+这是fluent python里的一句话, 可能也是[concurrent.futures](https://www.python.org/dev/peps/pep-3148/)这个包由来的原因。 最初接触这个包的时候, 我还觉得奇怪, 因为threading跟multiprocess已经提供了线程跟进程的接口, 何必再画蛇添足。 但是考虑上面那种场景, concurrent.futures确实能在某种角度帮助我们开发, 如果你的这段并行程序用不到lock, semaphore, queue这种结构时, 那么concurrent.futures只需要几行代码就可以完成你的需求(threading貌似也用不了几行)。  
+
+可以把这个lib 视作一个multiprocess, threading的高级封装。 而且使用这个lib还有助于理解future这个概念。 
+
+
+### Future
+
+[concurrent.futures lib](https://docs.python.org/3/library/concurrent.futures.html)里介绍了两个类, Executor Objects跟Future Objects。 我们先关注Future, future指一种对象, 表示异步执行的操作(与asyncio里的future类似), 与js中的promise对象类似。 future封装待完成的操作, 可以放入队列, 完成的状态可以查询, 之后得到结果。
+
+通常我们不自己创建future, 而是通过框架来实例化, 这里future实例通过调用Executor.submit()创建: 
+
+```
+with futures.ProcessPoolExecutor() as executor:
+	future = executor.submit(fn)
+	
+```
+
+future类包含的一些方法, 都是与future调用运行相关的信息:  
+
+* cancel(): 尝试取消调用  
+* cancelled(): 返回True如果调用被成功取消  
+* running(): 返回True如果调用还在执行  
+* result(timeout=None): 返回调用的结果, timeout设置超时
+
+### Executor  
+
+Execotor来执行我们创建的future。 当然Executor自己是一个abstract class。 使用时我们关注他的两个子类, ThreadPoolExecutor跟ProcessPoolExecutor。 这两个类实现的接口能分别在不同的线程或进程中执行可调用对象, 这两个类在内部维护着一个工作线程或进程池, 以及要执行的任务队列。  
+
+主要方法: 
+
+* submit(fn, \*args, \*\*kwargs): 为传入的可调用对象安排执行时间, 会执行fn(), 返回一个future对象  
+* map(fn, *iterables): 类似普通的map, 批量submit  
+
+还有一个很重要的方法, 是lib内直接定义的:  
+* as_completed(fs, timeout=None): 接受一个future列表, 返回一个迭代器在future运行结束后产出future
+
+concurrent.future使用示例:
+
+```
+from concurrent import futures
+import time
+
+import requests
+
+def do_get(i):
+	url = 'http://172.17.5.114/?v={}'.format(i)
+	try:
+		ret = requests.get(url)
+		ret.raise_for_status()
+		return ret.content
+	except Exception as e:
+		print('error in get {}'.format(e))
+
+
+
+def get():
+	with futures.ThreadPoolExecutor(max_workers=4) as executor:
+		to_do = []
+		for i in range(20):
+			future = executor.submit(do_get, i)
+			to_do.append(future)
+			print('Scheduled for {} : {}'.format(i, future))
+
+		result = []
+		for future in futures.as_completed(to_do):
+			ret = future.result()
+			print('{} result: {}'.format(future, ret))
+			result.append(ret)
+	return len(result)
+
+def main():
+	start = time.time()
+	count = get()
+	passed = time.time() - start
+	print('{} requests in {} s'.format(count, passed))	
+
+if __name__ == '__main__':
+	main()
+
+```
+
+这里是用了线程池, 如果想换做进程池也是可以的, 只要把
+
+```
+with futures.ThreadPoolExecutor(max_workers=4) as executor:
+```
+
+改成  
+
+```
+with futures.ProcessPoolExecutor() as executor: #不指定workers, 会默认使用当前系统cpu核数
+```
+
+
+### GIL
+
+之前已经充分了解过GIL了, 但是一提到python线程就不得不再聊聊, 因为GIL的存在同一时间只有一个线程在执行python字节码。还好标准库内的阻塞型I/O函数都会释放GIL, 这使得在web应用也就是I/O密集型场景下, python多线程还是能发挥些作用的。 
+
+### 总结 
+
+concurrent.future在multiprocess跟threading包的基础上, 又封装了一层, 更加简洁易用。 在某些子线程可以独立运行的场景(比如简单的爬虫, 压测)可以靠几行代码就写出一个并行程序, 还是有用武之地的。
