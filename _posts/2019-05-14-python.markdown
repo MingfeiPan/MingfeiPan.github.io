@@ -1,0 +1,47 @@
+---
+layout: post
+title:  python dict 实现 
+category: python
+tag : python
+--- 
+
+### 引言
+
+这一篇讨论python3.6 之前的dict实现
+
+### 散列表
+ 
+dict 是python中极为重要的一种数据结构, 他的实现依赖散列表。 这里的散列表实际为稀疏数组(总有空白元素的数组称为稀疏数组), 散列表里每一个单元即为一个bucket, python dict结构中, 每个key value pair占据一个bucket。 每个bucket分为两部分, 一个是对key的引用, 一个是对value的引用。 因为所有bucket大小一致, 所以可以通过偏移量来读取某个bucket(O(1))。
+
+`通常情况下, python dict会设法保证大概1/3的bucket是空的, 所以在到达阈值时, 原有的散列表会被复制到一个更大的空间里`
+
+### 计算hash 
+
+如果要把一个key value pair 放入dict, 首先要计算这个key的散列值, python中的内置类型对象利用hash()方法来计算。 而自定义对象需要给出自定义的__hash__方法。 通常在dict结构中, 9成的情况我们都会使用内置类型对象作key。
+
+我们知道任何一种hash()方法都需要几种特性, 比如hash的结果应该尽量分散且均匀, 并且需要具备雪崩效应(即少量消息位的变化会引起hash结果的许多位变化)。 python中的hash()方法具备这些性质。
+
+cpython中对于一个整形对象, 如果它能被存进一个机器字中, 那么他的散列值就是他本身的值。 
+
+python还会特别地对str, bytes, datetime加盐, 盐值是一个常量, 每次python解释器启动时都会生成一个不同盐值, [原因在这里的__hash__环节
+](https://docs.python.org/3/reference/datamodel.html), 这样[随机生成的盐](https://docs.python.org/3/using/cmdline.html#envvar-PYTHONHASHSEED)可以有效防止一种dos攻击, 比如刻意的使用与固定盐相符合的输入key, 使dict每次插入都产生hash冲突导致时间复杂度崩坏到O(n^2)。
+
+`这种随机盐的行为会影响set的遍历顺序`
+
+### dict hash过程 
+
+<img src="/img/in-post/dict.png">
+
+具体流程, 为了获取some_dict[some_key]的内容, python会先调用hash(some_key)来计算当前的hash值, 把这个值的最低几位数字当作偏移量, 在散列表内查询, 如果为空, 则抛出异常, 如果有值, 则会继续检查some_key 是否等于 search_key 等于则返回。 不等于则遇到冲突, python使用一种特殊的开放定址法处理冲突([perturb](https://github.com/python/cpython/blob/master/Objects/dictobject.c)), 如果新的结果匹配则返回, 否则继续处理冲突或空值抛出异常。
+
+每次插入新值, python可能会按照散列表拥挤程度来决定是否重新分配内存而扩容。
+
+`迭代一个字典的同时添加了新值, 可能会导致扩容顺序被打乱而漏掉元素`
+
+dict 的实现遵循一个原理, 空间换时间, 利用散列表可以达成快速的查询效率, 但是稀疏的散列表会浪费巨大的空间(这会在python3.6以后的版本得以改善)
+
+
+### dict key的次序 
+
+我们知道任何插入操作都可能会引起dict的扩容, python3.6之前的版本key的次序是不能保证一致的, 而python3.6之后的dict, key是已排序的。事实上python3.6的dict发生了一次重要的升级改动, 实现原理以及性能都有所提升, 这个我们过后讨论。
+
