@@ -1,0 +1,126 @@
+---
+layout: post
+title:  python asyncio
+category: python
+tag : python
+--- 
+
+### 引言 
+
+[asyncio](https://docs.python.org/3/library/asyncio.html)这个包可能是python里最重要且最少被书籍教程覆盖的一个包了。 重要的话Guido本人开发了这个包。覆盖少因为出现的很晚, 很多老的python书无法涉及。而且内容超多, 前后还折腾过很多改动。 《fluent python》对asyncio的介绍是我所知python书籍里最详细的, 这一点非常棒。 然而可惜的是, 这本书完成于15年前后, 是基于python3.4编写的。 所以作者错过了async/await语法的发布, 主要讲解使用yield from语法, 这是一点遗憾。 不过考虑到yield from 到async/await 可以无缝对接, 那也就撒撒嘴了。 
+
+### why 协程?  
+
+并发编程时, 不管是多进程跟多线程亦或是协程, 都是在达成同一个目标, 在I/O时避免阻塞型调用, 让程序运行下去。协程的优点在于避开系统调度改为用户态调度, 根本还是为了节省资源。fork进程时, 大量资源要被复制。 线程可能好一些但是也有数个MB的资源要求。 其实本身对资源的要求还在其次的话, 最麻烦的事系统在调度时需要浪费的操作。 大量的进程/线程的频繁唤醒/休眠非常浪费系统资源, 所以在应用程序层面做调度使用协程是更好的选择(goroutine)  
+
+### asyncio  
+
+先看看asyncio到底提供了些什么。
+
+high-level APIs: 
+
+* [并发地运行python coroutine](https://docs.python.org/3/library/asyncio-task.html#coroutine)
+* [支持socket IO, asyncio实现了tcp, udp, ssl协议](https://docs.python.org/3/library/asyncio-stream.html#asyncio-streams), 要使用http可以考虑aithttp包
+* [控制子进程](https://docs.python.org/3/library/asyncio-subprocess.html#asyncio-subprocess)
+* [asyncio queues](https://docs.python.org/3/library/asyncio-queue.html#asyncio-queues)
+* [asyncio 同步原语](https://docs.python.org/3/library/asyncio-sync.html#asyncio-sync), 包括了Lock, Event, Semaphore, Condition
+
+low level APIs: 
+
+* [创建并管理event loops](https://docs.python.org/3/library/asyncio-eventloop.html#asyncio-event-loop), event loops是使用asyncio的核心, 在此基础上程序可以异步执行task/callbacks, 执行I/O操作, 管理子进程等等。
+* [提供最基础的通信协议](https://docs.python.org/3/library/asyncio-protocol.html#asyncio-transports-protocols), 在此之上我们可以编写更高级的协议(比如http)。
+* 利用[future](https://docs.python.org/3/library/asyncio-future.html#asyncio-futures)连接low-level callback-based代码与high-level async/await 代码(这一点很少有人提到)。
+
+基上asyncio提供的base event loops, 这个包提供了完善的周边代码, 既可以直接利用高级接口做异步编程, 也可以从底层开始自己写。 
+
+### coroutine
+
+协程的两个概念:
+
+* 协程函数, 通过async def定义的协程函数 
+* 协程对象, 通过调用协程函数所返回的对象 
+
+`python3.4所使用的generator-based coroutines这里我就略去了, 那是旧语法yield from配合@asyncio.coroutine使用的, 这类协程不可以在async def定义的协程函数中使用(与await/async语法不互通)。 在3.7的文档里, 这个语法已经deprecated并且将在3.10中被移除`
+
+调用协程函数并不能使协程运行, 而是需要安排协程对象, 通过Future或者Task包装起来, 在时间循环loop执行时运行
+
+一个最简单的例子:
+
+```
+import asyncio
+
+async def compute(x, y):
+    print("Compute %s + %s ..." % (x, y))
+    await asyncio.sleep(1.0)
+    return x + y
+
+async def print_sum(x, y):
+    result = await compute(x, y)
+    print("%s + %s = %s" % (x, y, result))
+
+loop = asyncio.get_event_loop()
+loop.run_until_complete(asyncio.Task(print_sum(1,2)))
+loop.close()
+
+# Compute 1 + 2 ...
+# 1 + 2 = 3
+```
+
+上面的例子, 我们传给loop的是一个Task对象, 如果直接传一个coro对象会如何?
+
+```
+import asyncio
+
+......
+
+coro = print_sum(1,2)
+loop.run_until_complete(coro)
+loop.close()
+
+# Compute 1 + 2 ...
+# 1 + 2 = 3
+
+```
+
+还是可以运行的, 甚至你只传一个coro func也是可以运行的, loop的方法会跟参数类型来处理各类情况。
+
+### Future 
+
+我们在concurrent.futures里已经接触过Future对象了, asyncio的[Future](https://docs.python.org/3/library/asyncio-future.html#asyncio-futures)也是类似的, 用来表示异步执行的操作(只是类似, 因为有明显的区别, 比如concurrent.futures.Future是不可以被await的)
+
+使用await处理future, 等待future运行完毕这一步无需我们关心, await之后, 控制权会交还给event loop, 而不会阻塞event loop。
+
+与concurrent.futures类似, 不建议用户直接创建Future, 而是调用系统所提供的方法:
+
+创建Future相关方法:
+
+* loop.create_future(): 创建一个asyncio.Future对象, 这是目前最新版本python文档所推荐的首选方法。
+* asyncio.wrap_future(): 包装一个 concurrent.futures.Future对象为 asyncio.Future对象。
+
+### Task
+
+将一个协程的执行过程安排好: 用一个Future包装起来, Task是Future的一个子类。 asyncio.Task对象类似于threading.Thread对象(《fluent python》 p448)。
+
+Task负责在事件循环中执行协程, 如果被Task包装的协程await了一个Future, Task会暂停协程的执行, 先等待Future执行完成。 当Future执行结束, 被包装的协程会带着await的结果重新开始执行。
+
+事件循环调度规则: event loop每次只能执行一个Task, 其他Task可以在其他线程的event loop中执行。当Task完成时, event loop会执行下一个loop。
+
+调用Task的cancel()会想被包装的coroutine抛出CacelledError, 而Future的cancel()会在语言层面上做cancel操作。
+
+同样, 不建议用户直接创建Task, 而是调用系统所提供的方法:
+
+* loop.create_task(coro): 排定一个coroutine的执行, 返回一个Task对象 
+* asyncio.create_task(coro()): 排定一个coroutine的执行, 返回一个Task对象。 这是python3.7添加的方法用来取代旧的 asyncio.ensure_future(coro()), 也就是说3.7以下的版本不可使用。
+* asyncio.ensure_future(obj): 排定一个coroutine的执行, 并返回一个Task对象如果obj是一个coroutine。返回一个Task对象await obj, 如果obj是一个awaitable对象。
+这是目前python3.6的主要方法。
+* asyncio.async(coro_or_future): 这个方法你可能会在以python3.4为基础上写的代码中, 这个方法在目前版本已经deprecated, 改为使用ensure_future。
+
+
+asyncio提供的运行方法: 
+
+* awaitable asyncio.gather(*aws,loop=None, return_exceptions=False): 并行地执行aws序列里的awaitable objects, 如果任何awaitable对象是一个coroutine, 会被自动排定为一个Task对象。如果所有awaitable都执行完毕, 结果会被收集为一个结果集, 结果集的顺序与传入的aws顺序一致。
+* coroutine asyncio.wait(aws, *, loop=None, timeout=None, return_when=ALL_COMPLETED): 并行地执行aws序列里的awaitable objects并且会阻塞直到return_when的条件达成。 同样, 如果任何awaitable对象是一个coroutine, 会被自动排定为一个Task对象, 但是使用一个coroutines objects会影响运行结果, 请避免这样做。返回两个Task sets: (done, pending)。 形如: done, pending = await asyncio.wait(aws)
+* asyncio.as_completed(aws, *, loop=None, timeout=None): 并行地执行aws序列里的awaitable objects, 返回一个Future objects的迭代器, 这个迭代器会在Future运行结束后返回Future。
+
+
+
