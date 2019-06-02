@@ -95,7 +95,7 @@ TypeError: must be str, not int
 * 强类型, 偏向于不容忍隐式类型转换, 比如java, python  
 * 弱类型, 偏向于容忍隐式类型转换, 比如c  
 * 静态类型, 指的是编译器在compile time执行类型检查, 比如c 
-* 动态类型, 指的是解释器(编辑器+虚拟机)在runtime执行类型检查, 比如php
+* 动态类型, 指的是解释器(编译器+虚拟机)在runtime执行类型检查, 比如php
 
 
 
