@@ -1,0 +1,238 @@
+---
+layout: post
+title: Redlock的一些笔记 
+category: redis
+tag : redis
+---
+
+
+
+### 前言 
+
+整理收藏历史, 翻到[一条大佬对于redis实现分布式锁看法](https://www.weibo.com/fav?search_key=redis#1560153983909): "全是错的, 无一例外"。看了看下面的回答都不在点子上, 大佬自己也没有再回复, 所以花了些时间来看看这个话题。 
+
+### redis 实现分布式锁 
+
+redis本身提供了一个分布式锁的[实现方案](https://redis.io/topics/distlock)。遵循分布式锁的实现要求: 
+
+* 互斥性, 也就是任意时刻, 只能有一个客户端拥有锁。
+* 死锁可解, 锁需要一个过期时间, 一个锁最终是可以被获取的, 就算之前获取锁的客户端崩溃或者是发生了网络分区。
+
+#### 单实例的redis分布式锁  
+
+获取锁:
+
+```
+SET resource_name my_random_value NX PX 30000
+```
+
+利用set NX来保证互斥性, PX设置过期时间(单位为微秒), key的值my_random_value必须是一个唯一的值, 保证安全删除: "删除key时确保key的value是我设置时的那个value", 避免删除到别的client设置的key。删除操作通过lua script CAS操作保证原子性:
+
+```
+if redis.call("get",KEYS[1]) == ARGV[1] then
+    return redis.call("del",KEYS[1])
+else
+    return 0
+end
+
+```
+
+
+> 有关于这里的lua script, 其实就是一个compare & set操作, 看一个不使用cas操作的反例。
+
+> * client a获取锁成功    
+> * client a释放锁, 先执行'GET'操作获取key的值  
+> * client a判断value的值, 与预期的值相等, 准备删除    
+> * client a由于某个原因阻塞了很久(gc, network delay), 导致过期时间到了, 锁自动释放  
+> * client b获取锁成功  
+> * client a从阻塞中恢复过来, 执行DEL, 释放掉了client b持有的锁  
+
+
+
+
+关于为什么要使value唯一? 假设value不唯一, client a获取了当前锁, 执行其他事件。 碰巧这些事件的耗时超过了锁的过期时间, 锁过期后被client b获取使用了相同的value获取, 这时a完成前置事件可以释放锁了, 于是释放了b获取的锁。唯一value的选择: 作者给出了最简单的建议, 从/dev/urandom截取20个字节。 
+
+
+单点的实现非常简单, 但是单实例挂掉我们等于失去了这项服务。 或者我们做了主从, master挂掉还有slave顶上, 那么考虑如下场景: 
+
+* client a在当前master获取了锁 
+* master 挂了而且没有来得及同步这个锁的信息到slave(redis主从同步异步执行)
+* slave成为新的master
+* client b获取了同一个锁, 违背了互斥性 
+
+#### Redlock  
+
+单点的redis 分布式锁会有上述问题, 于是作者给出了Redlock方案。 
+
+在Redis的分布式环境中, 我们假设有N个Redis master。这些节点完全互相独立, 不存在主从复制或者其他集群协调机制。  
+
+#### 获取锁 
+1. 获取当前Unix时间, 以毫秒为单位  
+2. 依次尝试从N个实例, 使用相同的key和随机值获取锁。当向Redis设置锁时, 客户端应该设置一个网络连接和响应超时时间, 这个超时时间应该小于锁的失效时间。例如你的锁自动失效时间为10秒, 则超时时间应该在5-50毫秒之间。这样可以避免服务器端Redis已经挂掉的情况下, 客户端还在死死地等待响应结果。如果服务器端没有在规定时间内响应, 客户端应该尽快尝试另外一个Redis实例。  
+3. 客户端使用当前时间减去开始获取锁时间(步骤1记录的时间)就得到获取锁使用的时间。当且仅当从大多数(大于N/2 + 1个节点)的Redis节点都取到锁, 并且使用的时间小于锁失效时间时, 锁才算获取成功。  
+4. 如果取到了锁, key的真正有效时间等于有效时间减去获取锁所使用的时间(步骤3计算的结果)。  
+5. 如果因为某些原因, 获取锁失败(没有在至少N/2+1个Redis实例取到锁或者取锁时间已经超过了有效时间), 客户端应该在所有的Redis实例上进行解锁(即便某些Redis实例根本就没有加锁成功)。  
+
+#### 算法并非异步 
+
+redlock算法实现依赖于各节点的时钟正确性(), 这违背了异步分布式系统的基本原则, 这也是而后redlock被人吐槽的原因之一。
+
+#### 失败时重试 
+
+当客户端无法取到锁时, 应该在一个随机延迟后重试, 防止多个客户端在同时抢夺同一资源的锁。当客户端从大多数Redis实例获取锁失败时, 应该尽快释放已经成功取到的锁, 这样其他的客户端就不必非得等到锁过期后才能取到(在网络分区的情况下, 客户端已经无法和Redis实例通信, 此时就只能等待key的ttl过期)  
+
+#### 释放锁  
+
+在所有节点上发送释放指令, 就算没有从这些节点上获取到锁  
+
+#### 崩溃恢复 
+
+如果有节点发生崩溃, 考虑如下场景: 
+
+* redlock启用5个节点, abcde
+* client a锁住了a, b, c, 获取锁成功(>= N/2 + 1)
+* 节点c崩溃了, 这时节点c上的锁记录没有持久化下来  
+* 节点c重启后, client b锁住了c, d, e 
+* client a与client b同时获得了锁 
+
+这种情况下, 我们可以选用持久化方案aof, 但是默认的fsync一秒执行一次仍旧可能有最多2s的延迟。 如果打开fsync=always每条指令都写硬盘, 则会极大影响redlock性能。 又或者考虑主从方案, 但是redis主从执行异步复制, 也无法解决丢失问题。 这里作者给出了延迟重启的办法。 一个节点崩溃后, 先不立即重启它, 而是等待一段时间再重启, 这段时间应该大于锁的有效时间(lock validity time)。 这样可以解决上述的问题, 但是也会导致一个新问题, 比如大部分的redis实例都崩溃了, 系统在TTL时间内任何锁都将无法加锁成功。 
+
+
+### 争论 
+
+关于redlock是否是一个可靠的分布式锁, 大概两年前有过一场争论, 来自Martin Kleppmann(DDIA作者)与Antirez本人。 整个过程, [zhangtielei.com](http://zhangtielei.com/posts/blog-redlock-reasoning.html)大牛给出了一个完美的总结。读过之后感觉自己也没有必要在写什么了, 因为这篇总结基本无瑕疵。
+
+#### Martin的分析
+
+还是自己也总结一份吧, 加深理解。Martin在2016-02-08这一天发表了一篇blog[How to do distributed locking](https://martin.kleppmann.com/2016/02/08/how-to-do-distributed-locking.html)。 这篇文章写的非常浅显易懂, 领域内很多名词Martin都给翻译成了大白话, 简直好人。文章里Martin主要在两方面评价了redlock的问题, 我们一个一个看。
+
+作者先是给出了通常我们需要用到分布式锁的场景: 
+
+* Efficiency: 效率, 用锁来保证不会重复做一件事情, 这种时候, 锁失效带来的代价还不是很大, 你可能只是重复了一次请求或者多写了一份数据
+* Correctness: 正确性, 用锁来保证不出现并发事件, 这种情况锁失效就比较麻烦了, 并发进程操作同一块数据可能会导致很严重的后果, 数据损坏, 数据丢失, 数据不一致都很可怕。 
+
+对于要求效率场景, Martin认为redlock太重了, 随便用个单点锁就够了。而对于要求正确性的场景, redlock "not suitable"。 
+
+关注下面这种场景:
+
+<img src="/img/in-post/redlock0.png">
+
+* client a 成功获取了锁 
+* client a 陷入了GC pause  
+* 然后锁过期了, client b获取了锁  
+* 这时client a从GC中恢复, 他并不知道锁过期了, 这时client a与client b都获得了锁, 互斥性失效
+
+> 你可能会说在访问共享资源时先检查锁是否过期, 但是GC pause可能发生在任何时刻, 比如你刚检查完过期后  
+> 又或者你使用可以做到并发GC的语言做客户端, 比如Martin提到的HotSpot JVM’s CMS, 但也不能做到完全不阻塞程序线程   
+> 又或者你使用没有GC功能的语言做客户端, 然后还是会有其他情况会造成类似情况发生, 比如内存缺页(page fault), 或者系统内大量进程造成的cpu竞争。  
+> 又或者上述这些东西你都觉得很难发生, 但是客户端拿到锁之后对共享资源的请求可能会发生network delay, 这些都会造成client的锁过期
+
+`不过Martin最后说的操作共享资源network delay, 我是不太明白, 这里完全可以用客户端timeout来处理, 在锁超时之前如果对共享资源请求超时, 就应该执行释放锁操作了`  
+
+
+#### fencing token  
+
+为了解决上述问题, Martin给出了处理办法, fencing token是一个单调递增的数字, 当客户端成功获取锁的时候它随同锁一起返回给客户端。客户端访问共享资源的时候带着这个fencing token, 这样提供共享资源的服务就能根据它进行检查, 拒绝掉延迟到来的访问请求以避免冲突。 
+
+考虑如下场景:  
+
+<img src="/img/in-post/redlock1.png">  
+
+* client a先获取了锁, 并且带了fencing token=33 
+* 之后陷入了GC pause导致锁过期  
+* client b后获取了锁, 并且带了fencing token=34
+* 这时client a恢复并用33的token请求资源, 服务端回拒绝掉这次请求因为已经有一个更大token34请求过了  
+
+redlock没有提供这种fancing token机制。 而Martin提到如果使用ZooKeeper作为分布式锁服务, 可以利用zxid或者znode version作为此类fencing token来使用, 当然你需要在共享资源服务那里做一个验证机制。 
+
+#### redlock 依赖时间解决共识问题 
+
+redlock的可行性依赖于时间, 也就是说是非异步的算法。 这是Martin觉得redlock不合适的另一点原因。
+
+Martin指出了在分布式算法研究中的一个基础性问题, 好的分布式算法应该基于异步模型(asynchronous model), 要保证是[asynchronous model with unreliable failure detectors](http://courses.csail.mit.edu/6.852/08/papers/CT96-JACM.pdf), 用大白话说就是(Martin自己给的大白话), 算法的安全性不应该依赖于任何记时假定(timing assumption), 也就是:  
+
+* 进程可能陷入任意时长的阻塞 
+* 网络packet传递有可能出现任意时长的延迟 
+* 时钟也可能会出错  
+
+Martin认为一个好的分布式算法, 这些因素不应该影响它的安全性(safety property), 只可能影响到它的活性(liveness property), 即使在非常极端的情况下(比如系统时钟严重错误), 算法顶多是不能在有限的时间内给出结果而已, 而不能因此给出错误的结果。这样的算法在现实中是存在的, 类似Paxos, Zab或者Raft。 显然按这个标准的话, Redlock是达不到的。  
+
+并且redlock需要调用系统gettimeofday, 依赖于系统时间而非单调时钟(monotonic clock), 系统时间发生任何跳动都会导致redlock失效, 而对于不依赖时间假定的异步模型的系统来说, 这些问题并不存在。 
+
+考察下面这个场景: 
+
+* 假设为5个redis节点的redlock 
+* client a 从a, b, c获取了锁, 也就成功的获取了锁 
+* 节点c的时钟发生了跳跃, 向前移动了某段时间, 导致c上面的锁过期了 
+* client b 从c, d, e获取了锁, 也就成功的获取了锁 
+* client a, b都获取了锁 gg
+
+上面这种场景之所以有可能发生, 本质上就是因为Redlock的安全性(safety property)对系统的时钟有比较强的依赖, 一旦系统的时钟变得不准确, 算法的安全性就无法保证。  
+
+
+#### redlock的同步假定 
+
+Martin认为redlock可以正常工作的前提是需要一个同步模型系统的, 其中要包含:
+
+* 网络延时边界，即假设数据包一定能在某个最大延时之内到达
+* 进程停顿边界，即进程停顿一定在某个最大时间之内
+* 时钟错误边界，即不会从一个坏的 NTP 服务器处取得时间
+
+#### 结论 
+
+
+Martin认为redlock不是一个好的选择, 形容为"neither fish nor fowl"(不伦不类), 如果你的需求仅仅是为了保证效率性, 那么可以选择单节点的redis lock。 如果需要保证正确性, 还是应该选择其他能在异步模型下工作的共识算法实现的方案, 比如ZooKeeper, 或者支持事务的数据库。 
+
+以上就是Martin文章的基本内容了, 写的非常好, 语句也很直接, 建议大家都去读一读原文。 
+
+在[zhangtielei.com](http://zhangtielei.com/posts/blog-redlock-reasoning.html)的文章里, 这部分结束以后他做了一些提问和总结, 我也想记录在这里作为学习的笔记: 
+
+* 根据Martin的说法, 看起来, 如果资源服务器实现了fencing token, 它在分布式锁失效的情况下也仍然能保持资源的互斥访问。这是不是意味着分布式锁根本没有存在的意义了? 
+* 资源服务器需要检查fencing token的大小, 如果提供资源访问的服务也是包含多个节点的(分布式的), 那么这里怎么检查才能保证fencing token在多个节点上是递增的呢? 
+* 分布式锁+fencing token的方案是绝对正确的吗? 
+
+#### Antirez的反驳 
+
+就在Martin发文之后一天, Antirez也发了一篇文章[Is Redlock safe?](http://antirez.com/news/101)来反驳, 主要针对Martin的两点质疑: 
+
+* 带有自动过期功能的分布式锁, 必须提供某种机制来保证当锁非正常过期后客户端对共享资源访问的真正的互斥保护, Redlock提供不了这样一种机制 
+* Martin认为redlock算法, 建立在对系统模型的各类假定之上, 这无法在现实系统中得到保证, 所以本身就是不正确的  
+
+
+关于第一点, Antirez认为"既然已经存在一个fencing token来保证共享资源的互斥性访问了, 为什么还需要一个分布式锁呢?", 当然主流的zookeeper与google chubby都提供了类似的机制(这里[zhangtielei.com](http://zhangtielei.com/posts/blog-redlock-reasoning.html)的文章都有详细叙述, 写的非常清楚, 我就不再抄一遍了...), 分布式锁提供客户端的互斥, 而fencing token提供被访问共享资源的互斥。 这里并不能说有个fencing token就说分布式锁无用了。  
+
+关于第二点, Antirez认为一个现实的系统, 是能保证时钟的正常运行的, 需要通过合理的运维来确保。 这一点个人认为是不同意Martin的那种关于分布式系统一定要做到完全异步的思路的, 很难说谁对谁错, 但是按Martin的标准来看, redlock确实是不使用的。 
+
+个人觉得Antirez的反驳没答到点子上, 但是redlock本身就是按照一个同步模型设计的, 也不应该要求他能适应Martin的标准。 我们日常开发时也会通过运维手段来保证系统时间的正确性。 
+
+### 总结 
+
+看完这么多资料, 如果让我说, redlock在严格要求保证正确性的场景下是不适用的, 但是对于不那么严格的使用场景, 还是可以用的。 zookeeper已经是一个被很多人认可的用来实现分布式锁的方案, 那么可以作为通常的最佳选择。
+
+
+### ps 
+ 开始看这些东西的时候, 都是在HN, twitter上找各种记录, 看的很麻烦, 网页开了一大堆。 后来才发现了[zhangtielei.com](http://zhangtielei.com/posts/blog-redlock-reasoning.html)的文章, 前面夸过好多次了, 这里就不夸了。 原文里还有他对fencing token以及google chubby版本的"fencing token"的更多分析, 非常清晰, 讲了很多有关于 "类似GC pause 所带来的多client持有锁失去互斥性的问题" 的处理思路, 比如google chubby是怎么做的。 对于我这样的初学者来说, 实在是太好了。 
+
+
+
+
+ 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ 
