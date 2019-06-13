@@ -28,6 +28,9 @@ python还会特别地对str, bytes, datetime加盐, 盐值是一个常量, 每�
 
 `这种随机盐的行为会影响set的遍历顺序`
 
+[关于python hash的实现具体代码](http://effbot.org/zone/python-hash.htm)  
+
+
 ### dict hash过程 
 
 <img src="/img/in-post/dict.png">
