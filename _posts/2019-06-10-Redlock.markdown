@@ -211,7 +211,7 @@ Martin认为redlock不是一个好的选择, 形容为"neither fish nor fowl"(�
 
 
 ### ps 
- 开始看这些东西的时候, 都是在HN, twitter上找各种记录, 看的很麻烦, 网页开了一大堆。 后来才发现了[zhangtielei.com](http://zhangtielei.com/posts/blog-redlock-reasoning.html)的文章, 前面夸过好多次了, 这里就不夸了。 原文里还有他对fencing token以及google chubby版本的"fencing token"的更多分析, 非常清晰, 讲了很多有关于 "类似GC pause 所带来的多client持有锁失去互斥性的问题" 的处理思路, 比如google chubby是怎么做的。 对于我这样的初学者来说, 实在是太好了。 
+ 开始看这些东西的时候, 都是在HN, twitter上找各种记录, 看的很麻烦, 网页开了一大堆。 后来才发现了[zhangtielei.com](http://zhangtielei.com/posts/blog-redlock-reasoning.html)的文章, 前面夸过好多次了, 这里就不夸了。 原文里还有他对fencing token以及google chubby版本的"fencing token"的更多分析, 非常清晰, 讲了很多有关于 "类似GC pause 所带来的多client持有锁失去互斥性的问题" 的处理思路, 比如google chubby是怎么做的。 非常有参考价值。 
 
 
 
