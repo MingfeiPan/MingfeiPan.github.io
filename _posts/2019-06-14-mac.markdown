@@ -1,0 +1,95 @@
+---
+layout: post
+title: 利用homebrew下载低版本软件
+category: homebrew
+tag : homebrew
+---
+
+
+今天安装openvpn时, 遇到一个高版本不匹配的问题, 当前版本2.4.7太高了, 想换低版本。 通常使用brew search可以检索到多版本的可下载内容, 比如:
+
+```
+brew search ffmpeg 
+
+==> Formulae
+ffmpeg                       ffmpeg2theora                ffmpeg@2.8                   ffmpegthumbnailer
+
+```
+
+但是这个openvpn很遗憾只search出一个版本: 
+
+```
+brew search openvpn
+
+==> Formulae
+openvpn ✔
+
+```
+
+当然你可以选择编译安装, 这里给出一种通过brew安装低版本的办法。 
+
+### 流程 
+
+
+查看软件包版本 
+
+```
+brew info openvpn 
+
+```
+
+找出安装源路径信息: 
+
+```
+From: https://github.com/Homebrew/homebrew-core/blob/master/Formula/openvpn.rb
+```
+
+从homebrew-core的commit history里找出你要的版本的commit id, web上的文档太大了, 这里只能clone到本地再查看。 
+
+```
+git log master -- Formula/openvpn.rb > txt.log 
+
+```
+
+之后找出你想要的版本对应的commit log: 
+
+```
+198 commit 95a8b7b1972fe563b135deaeb35a61d43804550f
+199 Author: BrewTestBot <brew-test-bot@googlegroups.com>
+200 Date:   Sat Nov 5 07:35:59 2016 +0000
+201 
+202     openvpn: update 2.3.13 bottle.  
+
+```
+
+把commit id换到brew的下载raw link里去: 
+
+```
+from:
+
+https://raw.githubusercontent.com/Homebrew/homebrew-core/d581d989a78cbfc57c917bd3dcdeb6059bec5eed/Formula/openvpn.rb
+
+to: 
+https://raw.githubusercontent.com/Homebrew/homebrew-core/95a8b7b1972fe563b135deaeb35a61d43804550f/Formula/openvpn.rb
+
+```
+
+之后执行: 
+
+```
+brew install https://raw.githubusercontent.com/Homebrew/homebrew-core/d581d989a78cbfc57c917bd3dcdeb6059bec5eed/Formula/openvpn.rb
+
+```
+
+大功告成
+
+
+### ps 
+
+openvpn 2.4+的版本在mac 使用时, 读取ININE的配置会报错 
+
+```
+Insufficient key material or header text not found in file 'ta.key'
+```
+
+实在令人费解, 不过替换低版本可解, 比如2.3.13或者2.3.14
