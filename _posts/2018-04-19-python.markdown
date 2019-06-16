@@ -71,7 +71,7 @@ python内的名字空间一共有4种, LEGB:
 
 我们知道python是传引用的, 赋值时, 如果对象存在, 就只是把当前变量加到当前命名空间并指向该对象, 对象并不会拷贝, 而如果赋新值的话则会新建对象使变量指向新的对象, 而我们知道如果是list或者dict这种可变变量的话, 改变list中某个数的值并不会改变list本身指向的对象, 只有改变list自身的时候才会发生自身指向的变动    
 
-所以其实在之前的第二种情况的例子里, 到python执行到x += x时, 发现了赋值语句, 于是就把x加到当前的命名空间里, 但是这里赋值又要用python, 于是去locals里查找, 结果此时locals里确实有x这个变量, 然而他却没有值, 所以这里会报错, UnboundLocalError: local variable 'x' referenced before assignment, 第一种情况我们只是取x的值, 那么locals中就没有, 当到enclosing中找到之后, 就顺利的使用了  
+所以其实在之前的第二种情况的例子里, 到python执行到x += x时, 发现了赋值语句, 于是就把x加到当前的命名空间里, 但是这里赋值又要用x, 于是去locals里查找, 结果此时locals里确实有x这个变量, 然而他却没有值, 所以这里会报错, UnboundLocalError: local variable 'x' referenced before assignment, 第一种情况我们只是取x的值, 那么locals中就没有, 当到enclosing中找到之后, 就顺利的使用了  
 
 这里还有一个例子  
 
@@ -95,6 +95,28 @@ func2 locals after  {'a': 1, 'x': [2, 2]}
 ```
 
 对于一个list来说, 改变其中某个值的内容, 并不是对list本身做了赋值操作, 所以这里的x[0]的赋值就不会让locals()产生一个x的变量, 所以程序回再去外层enclosing中寻找, 找到之后顺利使用  
+
+请注意这种特例出现在使用+=这种操作符时, 因为 += 相当于读值再赋值, 如果直接赋值也就是python中的将不同作用域的变量改变绑定的对象, 这是允许的: 
+
+```
+def func1():
+    x = 1
+    def func2():
+        a = 1
+        print('func2 locals before ', locals())
+        x = a
+        print('func2 locals after ', locals())
+    func2()
+
+
+if __name__ == '__main__':
+    func1()
+
+func2 locals before  {'a': 1}
+func2 locals after  {'a': 1, 'x': 1}
+
+```
+此时 func2 与 func1 作用域内都有绑定一个x=1的变量, 他们并不冲突  
 
 #### 闭包
 
