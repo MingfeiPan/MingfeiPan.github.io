@@ -108,7 +108,7 @@ redlock算法实现依赖于各节点的时钟正确性, 这违背了异步分�
 
 #### Martin的分析
 
-还是自己也总结一份吧, 加深理解。Martin在2016-02-08这一天发表了一篇blog[How to do distributed locking](https://martin.kleppmann.com/2016/02/08/how-to-do-distributed-locking.html)。 这篇文章写的非常浅显易懂, 领域内很多名词Martin都给翻译成了大白话, 简直好人。文章里Martin主要在两方面评价了redlock的问题, 我们一个一个看。
+还是自己也总结一份吧, 加深理解。Martin在2016-02-08这一天发表了一篇blog :[How to do distributed locking](https://martin.kleppmann.com/2016/02/08/how-to-do-distributed-locking.html)。 这篇文章写的非常浅显易懂, 领域内很多名词Martin都给翻译成了大白话, 简直好人。文章里Martin主要在两方面评价了redlock的问题, 我们一个一个看。
 
 作者先是给出了通常我们需要用到分布式锁的场景: 
 
