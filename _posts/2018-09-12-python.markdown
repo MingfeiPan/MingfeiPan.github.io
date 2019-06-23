@@ -14,17 +14,17 @@ tag : python
 
 import threading
 
-class Singletion(object):
+class Singleton(object):
 	def __new__(cls, name):
 		_instance_lock = threading.Lock()
 		if not hasattr(cls, 'instance'):
 			with _instance_lock:
 				if not hasattr(cls, 'instance'):
-					cls.instance = super(Singletion, cls).__new__(cls)
+					cls.instance = super(Singleton, cls).__new__(cls)
 		return cls.instance
 
-a = Singletion('a')
-b = Singletion('b')
+a = Singleton('a')
+b = Singleton('b')
 
 print(a == b)
 
@@ -106,7 +106,7 @@ new <class '__main__.B'>
 
 import threading
 
-class Singletion(object):
+class Singleton(object):
 
 	def __init__(self, name):
 		print('init', name)
@@ -116,11 +116,11 @@ class Singletion(object):
 		if not hasattr(cls, 'instance'):
 			with _instance_lock:
 				if not hasattr(cls, 'instance'):
-					cls.instance = super(Singletion, cls).__new__(cls)
+					cls.instance = super(Singleton, cls).__new__(cls)
 		return cls.instance
 
-a = Singletion('a')
-b = Singletion('b')
+a = Singleton('a')
+b = Singleton('b')
 
 print(a == b)
 
@@ -137,7 +137,7 @@ True
 
 import threading
 
-class Singletion(object):
+class Singleton(object):
 
 	def __init__(self):
 		print('init')
@@ -148,11 +148,11 @@ class Singletion(object):
 		if not hasattr(cls, '_instance'):
 			with _instance_lock:
 				if not hasattr(cls, '_instance'):
-					cls._instance = Singletion()
+					cls._instance = Singleton()
 		return cls._instance
 
-a = Singletion.instance()
-b = Singletion.instance()
+a = Singleton.instance()
+b = Singleton.instance()
 
 print(a == b)
 
