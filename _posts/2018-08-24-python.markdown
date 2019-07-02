@@ -7,7 +7,7 @@ tag : python
 
 ### 引言 
 
-[asyncio](https://docs.python.org/3/library/asyncio.html)这个包可能是python里最重要且最少被书籍教程覆盖的一个包了。 重要的话Guido本人开发了这个包。覆盖少因为出现的很晚, 很多老的python书无法涉及。而且内容超多, 前后还折腾过很多改动。 《fluent python》对asyncio的介绍是我所知python书籍里最详细的, 这一点非常棒。 然而可惜的是, 这本书完成于15年前后, 是基于python3.4编写的。 所以作者错过了async/await语法的发布, 主要讲解使用yield from语法, 这是一点遗憾。 不过考虑到yield from 到async/await 可以无缝对接, 那也就撒撒嘴了。 
+[asyncio](https://docs.python.org/3/library/asyncio.html)这个包可能是python里最重要且最少被书籍教程覆盖的一个包了。 首先Guido亲自开发了这个包。而覆盖少是因为出现的很晚, 很多老的python书无法涉及。而且内容超多, 前后还折腾过很多改动。 《fluent python》对asyncio的介绍是我所知python书籍里最详细的, 这一点非常棒。 然而可惜的是, 这本书完成于15年前后, 是基于python3.4编写的。 所以作者错过了async/await语法的发布, 主要讲解使用yield from语法, 这是一点遗憾。 不过考虑到yield from 到async/await 可以无缝对接, 那也就撒撒嘴了。 
 
 ### why 协程?  
 
