@@ -1,0 +1,86 @@
+---
+layout: post
+title: steamid的一些笔记
+category: steam
+tag : steam
+---
+
+
+闲着无聊, 想爬一些steam的用户数据下, 这里记录steamid的结构
+
+### steamid 
+
+steam 有多个版本的id, 包括steamID, steamID3, steamID64, 目前比较通用的是steamID64, 可以通过: 
+
+```
+http://steamcommunity.com/profiles/{steamId64}
+```
+访问到用户的主页 
+
+可以用过steam api接口: 
+
+```
+http://api.steampowered.com/ISteamUser/GetPlayerSummaries/v0002/?key={key}&steamids={list_of_steamID64s}
+```
+
+访问到用户的数据
+
+
+### 具体结构 
+
+```
+给出一个steamID64: 76561197960361544    
+
+Binary = 100010000000000000000000100000000000000010111011001001000
+         ^^  ^^                  ^^                              ^
+         ||__||__________________||______________________________|
+         U AT       INSTANCE              32-BIT ACCOUNT ID
+```
+
+其中: 
+
+U, Universe, 表示top level Steam system for the account, 常用取值包括:  
+
+* 0: Invalid
+* 1: Public 
+
+AT表示Account Types, 常用取值包括: 
+
+* 0: Invalid
+* 1: Individual
+
+Instance未知, 但通常只有两种量: 
+
+* 0: Groups
+* 1: Individual
+
+ACCOUNT ID, 是通用的id, 目前看就是一个自增的uid 
+
+基本可以看出来正常的U, AT, Instance值都是1, 之后通过bit位移操作, 我们可以得到steamID64: 
+
+```
+((Universe << 56) | (Account Type << 52) | (Instance << 32) | Account ID)
+```
+
+python code : 
+
+```
+return universe_id << 56 | account_type << 52 | instance << 32 | uid
+```
+
+例如:
+
+```
+Universe = 1    
+Account Type = 1    
+Instance = 1    
+Account ID = 7777777
+---
+64-bit Steam ID = ((Universe << 56) | (Account Type << 52) | (Instance << 32) | Account ID)
+64-bit Steam ID = ((1 << 56) | (1 << 52) | (1 << 32) | 7777777)
+64-bit Steam ID = 76561197968043505
+
+```
+
+
+
