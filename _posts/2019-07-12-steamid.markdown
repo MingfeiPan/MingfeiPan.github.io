@@ -6,7 +6,7 @@ tag : steam
 ---
 
 
-闲着无聊, 想爬一些steam的用户数据下, 这里记录steamid的结构
+闲着无聊, 想爬一些steam的用户数据, 这里记录steamid的结构
 
 ### steamid 
 
