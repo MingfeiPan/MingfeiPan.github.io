@@ -15,7 +15,7 @@ tag : linux
 `export all_proxy=socks5://127.0.0.1:1080`
 >直接export只能在当前这个bash session里生效, 把export写到bashrc或者zshrc里更好  
 
-##### 使用 proxychains  
+### 使用 proxychains  
 mac下可以用brew 安装  
 `brew install proxychains-ng`  
 
@@ -27,4 +27,41 @@ mac下可以用brew 安装
 
 
 ##### 或者利用其他代理工具, 类似privoxy,charles也可以做到,就不多写了  
+
+### 后记 
+
+terminal proxy下的代理, 在docker pull image这里不生效, 所以改用privoxy 
+
+#### 安装
+
+```
+brew install privoxy
+
+修改 /usr/local/etc/privoxy/config 下配置信息 
+
+新增
+forward-socks5 / 127.0.0.1:1080 .
+
+改写listen-address中的127.0.0.1 到本机ip
+192.168.1.202:8118
+
+启动
+brew services start privoxy
+
+```
+
+然后在docker config.json内加proxy配置 
+
+```
+  "proxies" : {
+    "default" : {
+      "httpproxy" : "http://192.168.1.202:8118",
+      "httpsproxy" : "http://192.168.1.202:8118"
+    }
+  }
+```
+
+大功告成
+
+注意listen-address要改为本机ip, 否则会报错 getsockopt: connection refused
 
