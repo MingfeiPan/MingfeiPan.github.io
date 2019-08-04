@@ -11,7 +11,7 @@ tag : python
 
 ### why 协程?  
 
-并发编程时, 不管是多进程跟多线程亦或是协程, 都是在达成同一个目标, 在I/O时避免阻塞型调用, 让程序运行下去。协程的优点在于避开系统调度改为用户态调度, 根本还是为了节省资源。fork进程时, 大量资源要被复制。 线程可能好一些但是也有数个MB的资源要求。 其实本身对资源的要求还在其次的话, 最麻烦的事系统在调度时需要浪费的操作。 大量的进程/线程的频繁唤醒/休眠非常浪费系统资源, 所以在应用程序层面做调度使用协程是更好的选择(goroutine)  
+并发编程时, 不管是多进程跟多线程亦或是协程, 都是在达成同一个目标, 在I/O时避免阻塞型调用, 让程序运行下去。协程的优点在于避开系统调度改为用户态调度, 根本还是为了节省资源。fork进程时, 大量资源要被复制。 线程可能好一些但是也有数个MB的资源要求。 其实本身对资源的要求还在其次的话, 最麻烦的是系统在调度时需要浪费的操作。 大量的进程/线程的频繁唤醒/休眠非常浪费系统资源, 所以在应用程序层面做调度使用协程是更好的选择(goroutine)  
 
 ### asyncio  
 
@@ -42,7 +42,7 @@ low level APIs:
 
 `python3.4所使用的generator-based coroutines这里我就略去了, 那是旧语法yield from配合@asyncio.coroutine使用的, 这类协程不可以在async def定义的协程函数中使用(与await/async语法不互通)。 在3.7的文档里, 这个语法已经deprecated并且将在3.10中被移除`
 
-调用协程函数并不能使协程运行, 而是需要安排协程对象, 通过Future或者Task包装起来, 在时间循环loop执行时运行
+调用协程函数并不能使协程运行, 而是需要安排协程对象, 通过Future或者Task包装起来, 在事件循环loop执行时运行
 
 一个最简单的例子:
 
@@ -113,7 +113,7 @@ Task负责在事件循环中执行协程, 如果被Task包装的协程await了�
 * asyncio.create_task(coro()): 排定一个coroutine的执行, 返回一个Task对象。 这是python3.7添加的方法用来取代旧的 asyncio.ensure_future(coro()), 也就是说3.7以下的版本不可使用。
 * asyncio.ensure_future(obj): 排定一个coroutine的执行, 并返回一个Task对象如果obj是一个coroutine。返回一个Task对象await obj, 如果obj是一个awaitable对象。
 这是目前python3.6的主要方法。
-* asyncio.async(coro_or_future): 这个方法你可能会在以python3.4为基础上写的代码中, 这个方法在目前版本已经deprecated, 改为使用ensure_future。
+* asyncio.async(coro_or_future): 这个方法你可能会在以python3.4为基础写的代码中看到, 在目前版本已经deprecated, 改为使用ensure_future。
 
 
 asyncio提供的运行方法: 
