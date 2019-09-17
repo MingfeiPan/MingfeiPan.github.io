@@ -119,7 +119,7 @@ zcxc12	21
 
 
 ```
-sort -t $'\t' -k 1 -k 2nr sort.txt
+sort -t $'\t' -k 1,1 -k 2nr sort.txt
 
 asd123	22
 gj24	74

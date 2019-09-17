@@ -1,0 +1,179 @@
+---
+layout: post
+title: Your daily dose of linux(33)
+category: linux
+tag : linux
+---
+<img src="/img/in-post/linux.jpg">
+
+### awk
+
+awk 通常用法: 把文件逐行读入, 以空格为默认分隔符将每行切片, 切开的部分再进行各种分析处理 
+
+### 语法格式 
+
+```
+awk '{pattern + action}' {filenames}
+```
+
+### 常见用例
+
+数据源: 
+
+```
+docker image ls 
+
+REPOSITORY          TAG                 IMAGE ID            CREATED             SIZE
+docker              dind                5768e15eefd1        4 days ago          230MB
+docker              latest              b40e5afd78f5        4 days ago          216MB
+busybox             latest              19485c79a9bb        4 days ago          1.22MB
+alpine              latest              961769676411        2 weeks ago         5.58MB
+```
+
+* 给出检索结果的某列信息: 
+
+```
+docker image ls | grep docker | awk '{print $3}'
+
+5768e15eefd1
+b40e5afd78f5
+```
+
+*$1*, *$2* 表示第几列, *$NF* 表示最末列, *$(NF-n)* 表示从右边起第n列
+
+* 直接利用awk语法检索docker: 
+
+```
+docker image ls | awk `/docker/ {print $3}'
+
+5768e15eefd1
+b40e5afd78f5
+```
+
+* 显示带docker的行:  
+
+```
+docker image ls | awk '/docker/'
+
+docker              dind                5768e15eefd1        4 days ago          230MB
+docker              latest              b40e5afd78f5        4 days ago          216MB
+
+```
+
+* 打印多列, 这里打印镜像的名称跟tag: 
+
+```
+docker image ls | awk '/docker/ {print $1, $2}'
+
+docker dind
+docker latest
+```
+
+* 格式化打印多列, 这里的printf语法与c类似: 
+
+```
+docker image ls | awk '/docker/ {printf "%s:%s\n",$1,$2}'
+
+docker:dind
+docker:latest
+```
+
+* *NF* 打印最后一个字段:
+
+```
+docker image ls | awk '/docker/ {print $NF}'
+
+230MB
+216MB
+```
+
+* *NF-5* 打印从右向左第五个字段:
+
+```
+docker image ls | awk '/docker/ {print $(NF-5)}'
+
+dind
+latest
+```
+
+* *NR* 打印行号:
+
+```
+docker image ls | awk '{print NR}'
+
+1
+2
+3
+4
+5
+```
+
+* 可以利用 *NR* 来做行数判断 
+
+```
+docker image ls | awk 'NR%2 == 0' 
+
+docker              dind                5768e15eefd1        4 days ago          230MB
+busybox             latest              19485c79a9bb        4 days ago          1.22MB
+```
+
+* 默认分隔符是空格, 可以利用 *-F* 指定分隔符: 
+
+```
+awk -F : '/^root/ {print $1}' /etc/passwd
+
+root
+```
+
+* 匹配条件遵循regex规则, 使用 *^* 符号取n开头的行的第一个字段:
+
+```
+awk -F : '/^n/{print $1}' /etc/passwd
+
+nobody
+```
+
+* *~* 表示匹配, 这里取出$7匹配sh的行:
+
+```
+awk -F : '$7~"sh" {print $1,$7}' /etc/passwd 
+
+root /bin/sh
+_mbsetupuser /bin/bash
+```
+
+* *!~* 表示不匹配, 这里取出$7不匹配sh的行, 这里直接用 *!=* 也可以:
+
+```
+awk -F : '$7!~"sh" {print $1,$7}' /etc/passwd 
+
+nobody /usr/bin/false
+daemon /usr/bin/false
+```
+
+
+
+### 一个借助awk来push docker image的脚本: 
+
+```
+#!/bin/bash
+
+docker load -i $1
+new_repo=$2
+str=$(docker image ls | awk '{printf "%s:%s\n",$1,$2}')
+for i in $str
+do
+    if [ $i = "REPOSITORY:TAG" ]; then
+        continue
+    elif [ $i = "<none>:<none>" ]; then
+        continue
+    else
+        old_temp=$(echo $i | awk -F "/" '{print $NF}')
+        temp=$new_repo$old_temp
+        docker tag $i $temp
+        echo "pushing "$temp
+        docker push $temp
+        fi  
+    fi  
+done
+```
