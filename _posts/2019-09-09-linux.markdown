@@ -44,7 +44,7 @@ b40e5afd78f5
 * 直接利用awk语法检索docker: 
 
 ```
-docker image ls | awk `/docker/ {print $3}'
+docker image ls | awk '/docker/ {print $3}'
 
 5768e15eefd1
 b40e5afd78f5
