@@ -168,7 +168,7 @@ kubeadm init --pod-network-cidr=10.244.0.0/16 --kubernetes-version v1.15.3
 注意需要指定 --pod-network-cidr, 这里之前踩过一个坑, 如果没有指定系统不会默认给出这个配置, 通过下列语句可以查到是否配置了pod-network-cidr信息: 
 
 ```
-ubectl get nodes -o yaml | grep CIDR
+kubectl get nodes -o yaml | grep CIDR
 或者
 kubectl cluster-info dump | grep cluster-cidr
 ```
