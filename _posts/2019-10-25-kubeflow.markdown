@@ -1,0 +1,268 @@
+---
+layout: post
+title: 使用kubeadm安装k8s集群
+category: kubernetes
+tag : kubernetes
+---
+
+
+## kubeflow trouble shooting
+
+熟悉了一阵子 kubeflow 这个玩意组件太多, 功能也多, 自然bug也多。总结一下遇到的问题, 以后估计用的上。
+
+### 镜像pull不动 
+
+因为kubeflow 用到的组件都是gcr地址的镜像, 所以直接拖是拖不下来的, 当然可以去搭梯子弄proxy。但是如果遇到前段时间国庆那会梯子全挂的情况的话, 推荐一个工具 [docker_wrapper](https://github.com/silenceshell/docker_wrapper) 去pull, 然后扔到本地就行了, 注意之后要修改对应deployment中的PullPolicy为IfNotPresent, 很多kubeflow组件的配置里默认都是Always
+
+### pipeline-runner clusterrole for seldon
+
+使用pipeline时遇到的问题, 具体报错为:
+
+```
+This step is in Failed state with this message: Error from server (Forbidden): error when creating "/tmp/manifest.yaml": seldondeployments.machinelearning.seldon.io is forbidden: User "system:serviceaccount:kubeflow:pipeline-runner" cannot create resource "seldondeployments" in API group "machinelearning.seldon.io" in the namespace "kubeflow"
+
+```
+
+原因是kubeflow 没有操作seldondeployment resource的权限, 这里要编辑一下pipeline的clusterrole, 把seldon的权限加上 
+
+```
+kubectl edit clusterrole pipeline-runner -n kubeflow
+
+- apiGroups:
+  - machinelearning.seldon.io
+  resources:
+  - seldondeployments
+  verbs:
+  - '*'
+```
+
+提了一个加这条配置的[pr](https://github.com/kubeflow/pipelines/pull/2458#event-2743579328), 已经被merge了, 美滋滋
+
+#### admission-webhook 部署时遇到ca报错 
+
+[参考](https://banzaicloud.com/blog/k8s-admission-webhooks/)
+
+cert安装脚本:
+
+```
+#!/bin/bash
+
+set -e
+
+usage() {
+    cat <<EOF
+Generate certificate suitable for use with an sidecar-injector webhook service.
+This script uses k8s' CertificateSigningRequest API to a generate a
+certificate signed by k8s CA suitable for use with sidecar-injector webhook
+services. This requires permissions to create and approve CSR. See
+https://kubernetes.io/docs/tasks/tls/managing-tls-in-a-cluster for
+detailed explantion and additional instructions.
+The server key/cert k8s CA cert are stored in a k8s secret.
+usage: ${0} [OPTIONS]
+The following flags are required.
+       --service          Service name of webhook.
+       --namespace        Namespace where webhook service and secret reside.
+       --secret           Secret name for CA certificate and server certificate/key pair.
+EOF
+    exit 1
+}
+
+while [[ $# -gt 0 ]]; do
+    case ${1} in
+        --service)
+            service="$2"
+            shift
+            ;;
+        --secret)
+            secret="$2"
+            shift
+            ;;
+        --namespace)
+            namespace="$2"
+            shift
+            ;;
+        *)
+            usage
+            ;;
+    esac
+    shift
+done
+
+[ -z ${service} ] && service=webhook-cert
+[ -z ${secret} ] && secret=webhook-cert
+[ -z ${namespace} ] && namespace=kubeflow
+
+if [ ! -x "$(command -v openssl)" ]; then
+    echo "openssl not found"
+    exit 1
+fi
+
+csrName=${service}.${namespace}
+tmpdir=$(mktemp -d)
+echo "creating certs in tmpdir ${tmpdir} "
+
+cat <<EOF >> ${tmpdir}/csr.conf
+[req]
+req_extensions = v3_req
+distinguished_name = req_distinguished_name
+[req_distinguished_name]
+[ v3_req ]
+basicConstraints = CA:FALSE
+keyUsage = nonRepudiation, digitalSignature, keyEncipherment
+extendedKeyUsage = serverAuth
+subjectAltName = @alt_names
+[alt_names]
+DNS.1 = ${service}
+DNS.2 = ${service}.${namespace}
+DNS.3 = ${service}.${namespace}.svc
+EOF
+
+openssl genrsa -out ${tmpdir}/server-key.pem 2048
+openssl req -new -key ${tmpdir}/server-key.pem -subj "/CN=${service}.${namespace}.svc" -out ${tmpdir}/server.csr -config ${tmpdir}/csr.conf
+
+# clean-up any previously created CSR for our service. Ignore errors if not present.
+kubectl delete csr ${csrName} 2>/dev/null || true
+
+# create  server cert/key CSR and  send to k8s API
+cat <<EOF | kubectl create -f -
+apiVersion: certificates.k8s.io/v1beta1
+kind: CertificateSigningRequest
+metadata:
+  name: ${csrName}
+spec:
+  groups:
+  - system:authenticated
+  request: $(cat ${tmpdir}/server.csr | base64 | tr -d '\n')
+  usages:
+  - digital signature
+  - key encipherment
+  - server auth
+EOF
+
+# verify CSR has been created
+while true; do
+    kubectl get csr ${csrName}
+    if [ "$?" -eq 0 ]; then
+        break
+    fi
+done
+
+# approve and fetch the signed certificate
+kubectl certificate approve ${csrName}
+# verify certificate has been signed
+for x in $(seq 10); do
+    serverCert=$(kubectl get csr ${csrName} -o jsonpath='{.status.certificate}')
+    if [[ ${serverCert} != '' ]]; then
+        break
+    fi
+    sleep 1
+done
+if [[ ${serverCert} == '' ]]; then
+    echo "ERROR: After approving csr ${csrName}, the signed certificate did not appear on the resource. Giving up after 10 attempts." >&2
+    exit 1
+fi
+echo ${serverCert} | openssl base64 -d -A -out ${tmpdir}/server-cert.pem
+
+
+# create the secret with CA cert and server cert/key
+kubectl create secret generic ${secret} \
+        --from-file=key.pem=${tmpdir}/server-key.pem \
+        --from-file=cert.pem=${tmpdir}/server-cert.pem \
+        --dry-run -o yaml |
+    kubectl -n ${namespace} apply -f -
+```
+
+
+### node kubelet 报错 
+
+```
+CNI failed to retrieve network namespace path: cannot find network namespace for the terminated container 
+```
+
+大致使用流程是这样的: 
+
+之前跑过 pipeline 的任务, 然后没管, 几天过去看到pod在error, 就手动删掉了, 但是之后发现kubelet一直在报错: 
+
+```
+10月 25 14:41:40 localhost.localdomain kubelet[11291]: W1025 14:41:40.258066   11291 docker_sandbox.go:384] failed to read pod IP from plugin/docker: NetworkPlugin cni failed on the status hook for pod "nlp-lchjf-1568736918_kubeflow": CNI failed to retrieve network namespace path: cannot find network namespace for the terminated container "cd3eb06b915bc52e0560ec2b0bb16b7549eb65f170f43a92fc3ae8e50e7f8d71"
+10月 25 14:41:40 localhost.localdomain kubelet[11291]: W1025 14:41:40.283294   11291 docker_sandbox.go:384] failed to read pod IP from plugin/docker: NetworkPlugin cni failed on the status hook for pod "nlp-lchjf-4004864686_kubeflow": CNI failed to retrieve network namespace path: cannot find network namespace for the terminated container "1c053fdbfba70c8275a1ec06803e05822f5c41432c901a90e6c09c9ddf4bec13"
+```
+
+搜相关issue, 时间点都在2年前, 应该是早就修复的bug, 看了下pod已经被正常删除了, container 状态也是已经退出了的(Exited 0): 
+
+```
+[root@localhost etcd]# docker ps -a | grep lchjf
+26c7e6f35752        29a0235f83db                                                        "python /microservic…"   9 days ago          Exited (0) 9 days ago                          k8s_main_nlp-lchjf-2242331637_kubeflow_de174656-7965-4f55-89ee-0bea5f6a1871_0
+1671f10504ca        k8s.gcr.io/pause:3.1                                                "/pause"                 9 days ago          Exited (0) 9 days ago                          k8s_POD_nlp-lchjf-2242331637_kubeflow_de174656-7965-4f55-89ee-0bea5f6a1871_0
+5784e6cdc198        a719133e5cdf                                                        "python /microservic…"   9 days ago          Exited (0) 9 days ago                          k8s_main_nlp-lchjf-4004864686_kubeflow_230808c9-65a6-4a75-8196-d617d1dc8e8d_0
+1c053fdbfba7        k8s.gcr.io/pause:3.1                                                "/pause"                 9 days ago          Exited (0) 9 days ago                          k8s_POD_nlp-lchjf-4004864686_kubeflow_230808c9-65a6-4a75-8196-d617d1dc8e8d_0
+25d384d0cf99        0f178f083f92                                                        "python /microservic…"   9 days ago          Exited (0) 9 days ago                          k8s_main_nlp-lchjf-1568736918_kubeflow_e3c19a32-8cd9-4d15-ad69-858bab314d72_0
+cd3eb06b915b        k8s.gcr.io/pause:3.1                                                "/pause"                 9 days ago          Exited (0) 9 days ago                          k8s_POD_nlp-lchjf-1568736918_kubeflow_e3c19a32-8cd9-4d15-ad69-858bab314d72_0
+d4704748d083        1840e1818ec6                                                        "python /microservic…"   9 days ago          Exited (0) 9 days ago                          k8s_main_nlp-lchjf-1195854529_kubeflow_e5a6c04f-d41a-4fc3-8b7c-56a146944df3_0
+2b6738b3cc18        k8s.gcr.io/pause:3.1                                                "/pause"                 9 days ago          Exited (0) 9 days ago                          k8s_POD_nlp-lchjf-1195854529_kubeflow_e5a6c04f-d41a-4fc3-8b7c-56a146944df3_0
+```
+
+可以看到都是正常退出的, 猜测kubelet会报错是因为从api server拿到相关pod的信息, 但是又从机器上查不到相关的pod, 容器, 所以会一直报: 
+
+```
+CNI failed to retrieve network namespace path: cannot find network namespace for the terminated container
+```
+
+到这里问题看上去像是pod 删掉了, 但是etcd状态没更新产生了数据不一致的问题, 所以只能进etcd里去查下数据了, 在master上操作etcdctl
+
+```
+ETCDCTL_API=3 etcdctl --cacert=/etc/kubernetes/pki/etcd/ca.crt --cert=/etc/kubernetes/pki/etcd/peer.crt --key=/etc/kubernetes/pki/etcd/peer.key get key
+```
+
+注意要指定cert, 位置在 /etc/kubernetes/pki/etcd/
+
+k8s 的所有元数据都保存在/registry目录下, 利用prefix操作: 
+
+```
+ETCDCTL_API=3 etcdctl --cacert=/etc/kubernetes/pki/etcd/ca.crt --cert=/etc/kubernetes/pki/etcd/peer.crt --key=/etc/kubernetes/pki/etcd/peer.key get /registry --prefix | grep lchjf
+
+
+/registry/argoproj.io/workflows/kubeflow/nlp-lchjf
+{"apiVersion":"argoproj.io/v1alpha1","kind":"Workflow","metadata":{"creationTimestamp":"2019-10-16T03:16:01Z","generateName":"nlp-","generation":29,"labels":{"workflows.argoproj.io/completed":"true","workflows.argoproj.io/phase":"Failed"},"name":"nlp-lchjf","namespace":"kubeflow","uid":"8efe5d7a-08dd-4454-97f6-419d833b69a5"},"spec":{"arguments":{"parameters":[{"name":"csv-url","value":"https://raw.githubusercontent.com/axsauze/reddit-classification-exploration/master/data/reddit_train.csv"},{"name":"csv-encoding","value":"ISO-8859-1"},{"name":"features-column","value":"BODY"},{"name":"labels-column","value":"REMOVED"},{"name":"raw-text-path","value":"/mnt/text.data"},{"name":"labels-path","value":"/mnt/labels.data"},{"name":"clean-text-path","value":"/mnt/clean.data"},{"name":"spacy-tokens-path","value":"/mnt/tokens.data"},{"name":"tfidf-vectors-path","value":"/mnt/tfidf.data"},{"name":"lr-prediction-path","value":"/mnt/prediction.data"},{"name":"tfidf-model-path","value":"/mnt/tfidf.model"},{"name":"lr-model-path","value":"/mnt/lr.model"},{"name":"lr-c-param","value":"0.1"},{"name":"tfidf-max-features","value":"10000"},{"name":"tfidf-ngram-range","value":"3"},{"name":"batch-size","value":"1"}]},"entrypoint":"nlp","serviceAccountName":"pipeline-runner","templates":[{"container":{"args":["/microservice/pipeline_step.py","--in-path","{{inputs.parameters.raw-text-path}}","--out-path","{{inputs.parameters.clean-text-path}}"],"command":["python"],"image":"clean_text_transformer:0.1","name":"","resources":{},"volumeMounts":[{"mountPath":"/mnt","name":"my-pvc"}]},"inputs":{"parameters":[{"name":"clean-text-path"},{"name":"my-pvc-name"},{"name":"raw-text-path"}]},"metadata":{},"name":"clean-text","outputs":{"artifacts":[{"name":"mlpipeline-ui-metadata","optional":true,"path":"/mlpipeline-ui-metadata.json"},{"name":"mlpipeline-metrics","optional":true,"path":"/mlpipeline-metrics.json"}]}},{"container":{"args":["/microservice/pipeline_step.py","--labels-path","{{inputs.parameters.labels-path}}","--features-path","{{inputs.parameters.raw-text-path}}","--csv-url","{{inputs.parameters.csv-url}}","--csv-encoding","{{inputs.parameters.csv-encoding}}","--features-column","{{inputs.parameters.features-column}}","--labels-column","{{inputs.parameters.labels-column}}"],"command":["python"],"image":"data_downloader:0.1","name":"","resources":{},"volumeMounts":[{"mountPath":"/mnt","name":"my-pvc"}]},"inputs":{"parameters":[{"name":"csv-encoding"},{"name":"csv-url"},{"name":"features-column"},{"name":"labels-column"},{"name":"labels-path"},{"name":"my-pvc-name"},{"name":"raw-text-path"}]},"metadata":{},"name":"data-downloader","outputs":{"artifacts":[{"name":"mlpipeline-ui-metadata","optional":true,"path":"/mlpipeline-ui-metadata.json"},{"name":"mlpipeline-metrics","optional":true,"path":"/mlpipeline-metrics.json"}]}},{"inputs":{},"metadata":{},"name":"my-pvc","outputs":{"parameters":[{"name":"my-pvc-manifest","valueFrom":{"jsonPath":"{}"}},{"name":"my-pvc-name","valueFrom":{"jsonPath":"{.metadata.name}"}},{"name":"my-pvc-size","valueFrom":{"jsonPath":"{.status.capacity.storage}"}}]},"resource":{"action":"create","manifest":"apiVersion: v1\nkind: PersistentVolumeClaim\nmetadata:\n  name: '{{workflow.name}}-my-pvc'\nspec:\n  accessModes:\n  - ReadWriteMany\n  resources:\n    requests:\n      storage: 1Gi\n"}},{"dag":{"tasks":[{"arguments":{"parameters":[{"name":"clean-text-path","value":"{{inputs.parameters.clean-text-path}}"},{"name":"my-pvc-name","value":"{{tasks.my-pvc.outputs.parameters.my-pvc-name}}"},{"name":"raw-text-path","value":"{{inputs.parameters.raw-text-path}}"}]},"dependencies":["data-downloader","my-pvc"],"name":"clean-text","template":"clean-text"},{"arguments":{"parameters":[{"name":"csv-encoding","value":"{{inputs.parameters.csv-encoding}}"},{"name":"csv-url","value":"{{inputs.parameters.csv-url}}"},{"name":"features-column","value":"{{inputs.parameters.features-column}}"},{"name":"labels-column","value":"{{inputs.parameters.labels-column}}"},{"name":"labels-path","value":"{{inputs.parameters.labels-path}}"},{"name":"my-pvc-name","value":"{{tasks.my-pvc.outputs.parameters.my-pvc-name}}"},{"name":"raw-text-path","value":"{{inputs.parameters.raw-text-path}}"}]},"dependencies":["my-pvc"],"name":"data-downloader","template":"data-downloader"},{"arguments":{},"name":"my-pvc","template":"my-pvc"},{"arguments":{"parameters":[{"name":"labels-path","value":"{{inputs.parameters.labels-path}}"},{"name":"lr-c-param","value":"{{inputs.parameters.lr-c-param}}"},{"name":"lr-model-path","value":"{{inputs.parameters.lr-model-path}}"},{"name":"lr-prediction-path","value":"{{inputs.parameters.lr-prediction-path}}"},{"name":"my-pvc-name","value":"{{tasks.my-pvc.outputs.parameters.my-pvc-name}}"},{"name":"tfidf-vectors-path","value":"{{inputs.parameters.tfidf-vectors-path}}"}]},"dependencies":["my-pvc","vectorize"],"name":"predictor","template":"predictor"},{"arguments":{},"dependencies":["predictor"],"name":"seldondeploy","template":"seldondeploy"},{"arguments":{"parameters":[{"name":"clean-text-path","value":"{{inputs.parameters.clean-text-path}}"},{"name":"my-pvc-name","value":"{{tasks.my-pvc.outputs.parameters.my-pvc-name}}"},{"name":"spacy-tokens-path","value":"{{inputs.parameters.spacy-tokens-path}}"}]},"dependencies":["clean-text","my-pvc"],"name":"tokenize","template":"tokenize"},{"arguments":{"parameters":[{"name":"my-pvc-name","value":"{{tasks.my-pvc.outputs.parameters.my-pvc-name}}"},{"name":"spacy-tokens-path","value":"{{inputs.parameters.spacy-tokens-path}}"},{"name":"tfidf-max-features","value":"{{inputs.parameters.tfidf-max-features}}"},{"name":"tfidf-model-path","value":"{{inputs.parameters.tfidf-model-path}}"},{"name":"tfidf-ngram-range","value":"{{inputs.parameters.tfidf-ngram-range}}"},{"name":"tfidf-vectors-path","value":"{{inputs.parameters.tfidf-vectors-path}}"}]},"dependencies":["my-pvc","tokenize"],"name":"vectorize","template":"vectorize"}]},"inputs":{"parameters":[{"name":"clean-text-path"},{"name":"csv-encoding"},{"name":"csv-url"},{"name":"features-column"},{"name":"labels-column"},{"name":"labels-path"},{"name":"lr-c-param"},{"name":"lr-model-path"},{"name":"lr-prediction-path"},{"name":"raw-text-path"},{"name":"spacy-tokens-path"},{"name":"tfidf-max-features"},{"name":"tfidf-model-path"},{"name":"tfidf-ngram-range"},{"name":"tfidf-vectors-path"}]},"metadata":{},"name":"nlp","outputs":{}},{"container":{"args":["/microservice/pipeline_step.py","--in-path","{{inputs.parameters.tfidf-vectors-path}}","--labels-path","{{inputs.parameters.labels-path}}","--out-path","{{inputs.parameters.lr-prediction-path}}","--c-param","{{inputs.parameters.lr-c-param}}","--action","train","--model-path","{{inputs.parameters.lr-model-path}}"],"command":["python"],"image":"lr_text_classifier:0.1","name":"","resources":{},"volumeMounts":[{"mountPath":"/mnt","name":"my-pvc"}]},"inputs":{"parameters":[{"name":"labels-path"},{"name":"lr-c-param"},{"name":"lr-model-path"},{"name":"lr-prediction-path"},{"name":"my-pvc-name"},{"name":"tfidf-vectors-path"}]},"metadata":{},"name":"predictor","outputs":{"artifacts":[{"name":"mlpipeline-ui-metadata","optional":true,"path":"/mlpipeline-ui-metadata.json"},{"name":"mlpipeline-metrics","optional":true,"path":"/mlpipeline-metrics.json"}]}},{"inputs":{},"metadata":{},"name":"seldondeploy","outputs":{"parameters":[{"name":"seldondeploy-manifest","valueFrom":{"jsonPath":"{}"}},{"name":"seldondeploy-name","valueFrom":{"jsonPath":"{.metadata.name}"}}]},"resource":{"action":"create","manifest":"apiVersion: machinelearning.seldon.io/v1alpha2\nkind: SeldonDeployment\nmetadata:\n  labels:\n    app: seldon\n  name: seldon-deployment-{{workflow.name}}\n  namespace: kubeflow\nspec:\n  annotations:\n    deployment_version: v1\n    project_name: NLP Pipeline\n  name: seldon-deployment-{{workflow.name}}\n  oauth_key: oauth-key\n  oauth_secret: oauth-secret\n  predictors:\n  - annotations:\n      predictor_version: v1\n    componentSpecs:\n    - spec:\n        containers:\n        - image: clean_text_transformer:0.1\n          imagePullPolicy: IfNotPresent\n          name: cleantext\n          resources:\n            requests:\n              memory: 1Mi\n        - image: spacy_tokenizer:0.1\n          imagePullPolicy: IfNotPresent\n          name: spacytokenizer\n        - image: tfidf_vectorizer:0.1\n          imagePullPolicy: IfNotPresent\n          name: tfidfvectorizer\n          volumeMounts:\n          - mountPath: /mnt\n            name: mypvc\n        - image: lr_text_classifier:0.1\n          imagePullPolicy: IfNotPresent\n          name: lrclassifier\n          volumeMounts:\n          - mountPath: /mnt\n            name: mypvc\n        terminationGracePeriodSeconds: 20\n        volumes:\n        - name: mypvc\n          persistentVolumeClaim:\n            claimName: '{{workflow.name}}-my-pvc'\n    graph:\n      children:\n      - children:\n        - children:\n          - children: []\n            endpoint:\n              type: REST\n            name: lrclassifier\n            type: MODEL\n          endpoint:\n            type: REST\n          name: tfidfvectorizer\n          type: MODEL\n        endpoint:\n          type: REST\n        name: spacytokenizer\n        type: MODEL\n      endpoint:\n        type: REST\n      name: cleantext\n      type: MODEL\n    name: single-model\n    replicas: 1\n"}},{"container":{"args":["/microservice/pipeline_step.py","--in-path","{{inputs.parameters.clean-text-path}}","--out-path","{{inputs.parameters.spacy-tokens-path}}"],"command":["python"],"image":"spacy_tokenizer:0.1","name":"","resources":{},"volumeMounts":[{"mountPath":"/mnt","name":"my-pvc"}]},"inputs":{"parameters":[{"name":"clean-text-path"},{"name":"my-pvc-name"},{"name":"spacy-tokens-path"}]},"metadata":{},"name":"tokenize","outputs":{"artifacts":[{"name":"mlpipeline-ui-metadata","optional":true,"path":"/mlpipeline-ui-metadata.json"},{"name":"mlpipeline-metrics","optional":true,"path":"/mlpipeline-metrics.json"}]}},{"container":{"args":["/microservice/pipeline_step.py","--in-path","{{inputs.parameters.spacy-tokens-path}}","--out-path","{{inputs.parameters.tfidf-vectors-path}}","--max-features","{{inputs.parameters.tfidf-max-features}}","--ngram-range","{{inputs.parameters.tfidf-ngram-range}}","--action","train","--model-path","{{inputs.parameters.tfidf-model-path}}"],"command":["python"],"image":"tfidf_vectorizer:0.1","name":"","resources":{},"volumeMounts":[{"mountPath":"/mnt","name":"my-pvc"}]},"inputs":{"parameters":[{"name":"my-pvc-name"},{"name":"spacy-tokens-path"},{"name":"tfidf-max-features"},{"name":"tfidf-model-path"},{"name":"tfidf-ngram-range"},{"name":"tfidf-vectors-path"}]},"metadata":{},"name":"vectorize","outputs":{"artifacts":[{"name":"mlpipeline-ui-metadata","optional":true,"path":"/mlpipeline-ui-metadata.json"},{"name":"mlpipeline-metrics","optional":true,"path":"/mlpipeline-metrics.json"}]}}],"volumes":[{"name":"my-pvc","persistentVolumeClaim":{"claimName":"{{inputs.parameters.my-pvc-name}}"}}]},"status":{"finishedAt":"2019-10-16T03:21:51Z","nodes":{"nlp-lchjf":{"children":["nlp-lchjf-2529399715"],"displayName":"nlp-lchjf","finishedAt":"2019-10-16T03:21:51Z","id":"nlp-lchjf","inputs":{"parameters":[{"name":"clean-text-path","value":"/mnt/clean.data"},{"name":"csv-encoding","value":"ISO-8859-1"},{"name":"csv-url","value":"https://raw.githubusercontent.com/axsauze/reddit-classification-exploration/master/data/reddit_train.csv"},{"name":"features-column","value":"BODY"},{"name":"labels-column","value":"REMOVED"},{"name":"labels-path","value":"/mnt/labels.data"},{"name":"lr-c-param","value":"0.1"},{"name":"lr-model-path","value":"/mnt/lr.model"},{"name":"lr-prediction-path","value":"/mnt/prediction.data"},{"name":"raw-text-path","value":"/mnt/text.data"},{"name":"spacy-tokens-path","value":"/mnt/tokens.data"},{"name":"tfidf-max-features","value":"10000"},{"name":"tfidf-model-path","value":"/mnt/tfidf.model"},{"name":"tfidf-ngram-range","value":"3"},{"name":"tfidf-vectors-path","value":"/mnt/tfidf.data"}]},"name":"nlp-lchjf","phase":"Failed","startedAt":"2019-10-16T03:16:01Z","templateName":"nlp","type":"DAG"},"nlp-lchjf-1195854529":{"boundaryID":"nlp-lchjf","children":["nlp-lchjf-2785151948"],"displayName":"data-downloader","finishedAt":"2019-10-16T03:18:28Z","id":"nlp-lchjf-1195854529","inputs":{"parameters":[{"name":"csv-encoding","value":"ISO-8859-1"},{"name":"csv-url","value":"https://raw.githubusercontent.com/axsauze/reddit-classification-exploration/master/data/reddit_train.csv"},{"name":"features-column","value":"BODY"},{"name":"labels-column","value":"REMOVED"},{"name":"labels-path","value":"/mnt/labels.data"},{"name":"my-pvc-name","value":"nlp-lchjf-my-pvc"},{"name":"raw-text-path","value":"/mnt/text.data"}]},"name":"nlp-lchjf.data-downloader","outputs":{"artifacts":[{"name":"mlpipeline-ui-metadata","optional":true,"path":"/mlpipeline-ui-metadata.json"},{"name":"mlpipeline-metrics","optional":true,"path":"/mlpipeline-metrics.json"}]},"phase":"Succeeded","startedAt":"2019-10-16T03:16:05Z","templateName":"data-downloader","type":"Pod"},"nlp-lchjf-1568736918":{"boundaryID":"nlp-lchjf","children":["nlp-lchjf-4004864686"],"displayName":"tokenize","finishedAt":"2019-10-16T03:20:50Z","id":"nlp-lchjf-1568736918","inputs":{"parameters":[{"name":"clean-text-path","value":"/mnt/clean.data"},{"name":"my-pvc-name","value":"nlp-lchjf-my-pvc"},{"name":"spacy-tokens-path","value":"/mnt/tokens.data"}]},"name":"nlp-lchjf.tokenize","outputs":{"artifacts":[{"name":"mlpipeline-ui-metadata","optional":true,"path":"/mlpipeline-ui-metadata.json"},{"name":"mlpipeline-metrics","optional":true,"path":"/mlpipeline-metrics.json"}]},"phase":"Succeeded","startedAt":"2019-10-16T03:19:46Z","templateName":"tokenize","type":"Pod"},"nlp-lchjf-2242331637":{"boundaryID":"nlp-lchjf","children":["nlp-lchjf-2715199541"],"displayName":"predictor","finishedAt":"2019-10-16T03:21:45Z","id":"nlp-lchjf-2242331637","inputs":{"parameters":[{"name":"labels-path","value":"/mnt/labels.data"},{"name":"lr-c-param","value":"0.1"},{"name":"lr-model-path","value":"/mnt/lr.model"},{"name":"lr-prediction-path","value":"/mnt/prediction.data"},{"name":"my-pvc-name","value":"nlp-lchjf-my-pvc"},{"name":"tfidf-vectors-path","value":"/mnt/tfidf.data"}]},"name":"nlp-lchjf.predictor","outputs":{"artifacts":[{"name":"mlpipeline-ui-metadata","optional":true,"path":"/mlpipeline-ui-metadata.json"},{"name":"mlpipeline-metrics","optional":true,"path":"/mlpipeline-metrics.json"}]},"phase":"Succeeded","startedAt":"2019-10-16T03:21:37Z","templateName":"predictor","type":"Pod"},"nlp-lchjf-2529399715":{"boundaryID":"nlp-lchjf","children":["nlp-lchjf-1195854529","nlp-lchjf-2785151948","nlp-lchjf-1568736918","nlp-lchjf-4004864686","nlp-lchjf-2242331637"],"displayName":"my-pvc","finishedAt":"2019-10-16T03:16:04Z","id":"nlp-lchjf-2529399715","name":"nlp-lchjf.my-pvc","outputs":{"parameters":[{"name":"my-pvc-manifest","value":"map[kind:PersistentVolumeClaim apiVersion:v1 metadata:map[creationTimestamp:2019-10-16T03:16:04Z annotations:map[volume.beta.kubernetes.io/storage-provisioner:fuseim.pri/ifs] finalizers:[kubernetes.io/pvc-protection] name:nlp-lchjf-my-pvc namespace:kubeflow selfLink:/api/v1/namespaces/kubeflow/persistentvolumeclaims/nlp-lchjf-my-pvc uid:ceb69875-4a88-4076-849f-baaf63a321e6 resourceVersion:4672311] spec:map[accessModes:[ReadWriteMany] resources:map[requests:map[storage:1Gi]] storageClassName:managed-nfs-storage volumeMode:Filesystem] status:map[phase:Pending]]","valueFrom":{"jsonPath":"{}"}},{"name":"my-pvc-name","value":"nlp-lchjf-my-pvc","valueFrom":{"jsonPath":"{.metadata.name}"}},{"name":"my-pvc-size","value":"1Gi","valueFrom":{"jsonPath":"{.status.capacity.storage}"}}]},"phase":"Succeeded","startedAt":"2019-10-16T03:16:01Z","templateName":"my-pvc","type":"Pod"},"nlp-lchjf-2715199541":{"boundaryID":"nlp-lchjf","displayName":"seldondeploy","finishedAt":"2019-10-16T03:21:50Z","id":"nlp-lchjf-2715199541","message":"Error from server (InternalError): error when creating \"/tmp/manifest.yaml\": Internal error occurred: failed calling webhook \"mutating-create-update-seldondeployment.seldon.io\": Post https://webhook-server-service.seldon-core.svc:443/mutating-create-update-seldondeployment?timeout=30s: service \"webhook-server-service\" not found","name":"nlp-lchjf.seldondeploy","phase":"Failed","startedAt":"2019-10-16T03:21:46Z","templateName":"seldondeploy","type":"Pod"},"nlp-lchjf-2785151948":{"boundaryID":"nlp-lchjf","children":["nlp-lchjf-1568736918"],"displayName":"clean-text","finishedAt":"2019-10-16T03:19:44Z","id":"nlp-lchjf-2785151948","inputs":{"parameters":[{"name":"clean-text-path","value":"/mnt/clean.data"},{"name":"my-pvc-name","value":"nlp-lchjf-my-pvc"},{"name":"raw-text-path","value":"/mnt/text.data"}]},"name":"nlp-lchjf.clean-text","outputs":{"artifacts":[{"name":"mlpipeline-ui-metadata","optional":true,"path":"/mlpipeline-ui-metadata.json"},{"name":"mlpipeline-metrics","optional":true,"path":"/mlpipeline-metrics.json"}]},"phase":"Succeeded","startedAt":"2019-10-16T03:18:30Z","templateName":"clean-text","type":"Pod"},"nlp-lchjf-4004864686":{"boundaryID":"nlp-lchjf","children":["nlp-lchjf-2242331637"],"displayName":"vectorize","finishedAt":"2019-10-16T03:21:36Z","id":"nlp-lchjf-4004864686","inputs":{"parameters":[{"name":"my-pvc-name","value":"nlp-lchjf-my-pvc"},{"name":"spacy-tokens-path","value":"/mnt/tokens.data"},{"name":"tfidf-max-features","value":"10000"},{"name":"tfidf-model-path","value":"/mnt/tfidf.model"},{"name":"tfidf-ngram-range","value":"3"},{"name":"tfidf-vectors-path","value":"/mnt/tfidf.data"}]},"name":"nlp-lchjf.vectorize","outputs":{"artifacts":[{"name":"mlpipeline-ui-metadata","optional":true,"path":"/mlpipeline-ui-metadata.json"},{"name":"mlpipeline-metrics","optional":true,"path":"/mlpipeline-metrics.json"}]},"phase":"Succeeded","startedAt":"2019-10-16T03:20:51Z","templateName":"vectorize","type":"Pod"}},"phase":"Failed","startedAt":"2019-10-16T03:16:01Z"}}
+/registry/persistentvolumeclaims/kubeflow/nlp-lchjf-my-pvc
+nlp-lchjf-my-pvkubeflow"*$ceb69875-4a88-4076-849f-baaf63a321e62????b?
+ReadWriteMany"hnfs/data/kubeflow-nlp-lchjf-my-pvc-pvc-ceb69875-4a88-4076-849f-baaf63a321e6
+PersistentVolumeClaikubeflownlp-lchjf-my-pvc"$ceb69875-4a88-4076-849f-baaf63a321e6*v124672310:*Delete2managed-nfs-storageB
+```
+
+跟这个字符串 *lchjf* 相关的数据, 有两个: 
+
+```
+/registry/argoproj.io/workflows/kubeflow/nlp-lchjf
+/registry/persistentvolumeclaims/kubeflow/nlp-lchjf-my-pvc
+```
+
+一个是workflow: 
+
+```
+[root@localhost etcd]# kubectl get wf -n kubeflow | grep lchjf
+NAME        AGE
+nlp-lchjf   9d
+```
+
+一个是pvc: 
+
+```
+kubectl get pvc -n kubeflow | grep lchjf
+
+nlp-lchjf-my-pvc   Bound    pvc-ceb69875-4a88-4076-849f-baaf63a321e6   1Gi        RWX            managed-nfs-storage   9d
+```
+
+因为报错的地方有cni网卡, 所以把 /var/lib/cni/flannel/ 与 /var/lib/cni/networks 也纳入删除考量。 但是把workflow, pvc(实际上pvc跟这个关系并不大), cni下的数据都删除之后仍旧在报错。 
+
+因为k8s集群的数据是都存在etcd里的, etcd里相关字段的数据也都删掉了, 跟这个pod相关的信息理应是没有了。 当然还有一种可能就是 etcd里存的 lchjf 这个字符串的相关信息经过了 base64 编码, 所以grep 不到, 这个下周来了要再试下。
+
+目前没有找到问题原因, 不过可以确认的是 kubeflow pipeline的流程处理上有一些问题, 当我删掉error的pod时, 相对应的某些资源没有被删掉, k8s的逻辑也没有处理这里导致panic。 
+
+
+
+
+
+
+
+

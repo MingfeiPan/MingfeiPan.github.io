@@ -1,8 +1,8 @@
 ---
 layout: post
 title: 使用kubeadm安装k8s集群
-category: k8s
-tag : k8s
+category: kubernetes
+tag : kubernetes
 ---
 
 ## 使用kubeadm安装k8s集群 
