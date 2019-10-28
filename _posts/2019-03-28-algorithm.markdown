@@ -43,31 +43,41 @@ def combinations_dfs(iterable, r):
 
 排列(permutations):
 
+排列比组合的情况更多一些, 因为位置因素会有区别, 可以基于递归的思路想一下, 会容易理解: 
+
+* 对于一个n个元素的序列(无重复)而言, 求他的全排列的问题, 可以分解为n个子问题: 依次让每个元素作为首元素, 剩余n-1个元素进行全排列, 直到结束
+* 考察一个三个元素的例子: [a, b, c], 可以分解为三个字问题
+	* a开头, 接上[b, c]的全排列
+	* b开头, 接上[a, c]的全排列
+	* c开头, 接上[a, b]的全排列
+	* 然后依次递归
+
 ```
-def permutations_dfs(iterable, r):
-    pool = tuple(iterable)
-    n = len(iterable)
-
-    ret = []
-    def dfs(curr=None):
-        if curr is None:
-            curr = []
-
-        if len(curr) == r:
-            ret.append(curr)
-
-        for i in range(0, n):
-            if pool[i] in curr:
-                continue
-            else:
-                dfs(curr+[pool[i]])
-
-    dfs()
+func permute(nums []int) [][]int {
+    if len(nums) == 0 {
+        return [][]int{}
+    }
+    ret := make([][]int, 0)
+    bt(&ret, nums, []int{})
     return ret
-   
-[['a', 'b'], ['a', 'c'], ['a', 'd'], ['b', 'a'], ['b', 'c'], ['b', 'd'], ['c', 'a'], ['c', 'b'], ['c', 'd'], ['d', 'a'], ['d', 'b'], ['d', 'c']]
+}
 
+func bt(ret *[][]int, nums []int, cur []int) {
+    if len(nums) == 0 {
+        // temp := append([]int{}, cur...)
+        *ret = append(*ret, append([]int{}, cur...))
+    }else {
+        for i := 0; i < len(nums); i++ {
+            temp := append([]int{}, nums[:i]...)
+            tempcur := append([]int{}, cur...)
+            
+            // nums剔除当前位置元素, 递归剩下元素的permute,  cur加上当前i位置元素, go的复制操作有点日狗
+            bt(ret, append(temp, nums[i+1:]...), append(tempcur, nums[i]))
+        }
+    }
+}
 ```
+
 
 重复组合(combinations with replacement)  
 
