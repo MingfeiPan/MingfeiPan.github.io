@@ -1,0 +1,353 @@
+---
+layout: post
+title: 使用kubeadm安装k8s集群
+category: kubernetes
+tag : kubernetes
+---
+
+## 使用kubeadm安装k8s集群 
+
+最近放假, 把之前一段时间在k8s上的一些学习材料整理一下
+
+### 系统版本信息
+
+```
+centos 7.6
+k8s 1.15.3
+docker-ce 19.03.2
+```
+### 关闭selinux
+
+```
+setenforce 0
+sed -i 's/^SELINUX=enforcing$/SELINUX=permissive/' /etc/selinux/config
+```
+
+### 关闭防火墙 
+
+```
+systemctl stop firewalld
+```
+
+### 调整内核参数 
+
+```
+sysctl -w net.ipv4.ip_forward=1
+```
+
+### 关闭swap并修改iptables默认规则 
+
+```
+swapoff -a
+iptables -P FORWARD ACCEPT
+```
+
+### 安装docker & kubernetes
+
+#### 配置base rpm包
+
+```
+/etc/yum.repos.d/base.repo
+
+[base]
+name=CentOS-$releasever - Base - mirrors.aliyun.com
+failovermethod=priority
+baseurl=http://mirrors.aliyun.com/centos/$releasever/os/$basearch/
+        http://mirrors.aliyuncs.com/centos/$releasever/os/$basearch/
+        http://mirrors.cloud.aliyuncs.com/centos/$releasever/os/$basearch/
+gpgcheck=1
+gpgkey=http://mirrors.aliyun.com/centos/RPM-GPG-KEY-CentOS-7
+ 
+#released updates 
+[updates]
+name=CentOS-$releasever - Updates - mirrors.aliyun.com
+failovermethod=priority
+baseurl=http://mirrors.aliyun.com/centos/$releasever/updates/$basearch/
+        http://mirrors.aliyuncs.com/centos/$releasever/updates/$basearch/
+        http://mirrors.cloud.aliyuncs.com/centos/$releasever/updates/$basearch/
+gpgcheck=1
+gpgkey=http://mirrors.aliyun.com/centos/RPM-GPG-KEY-CentOS-7
+ 
+#additional packages that may be useful
+[extras]
+name=CentOS-$releasever - Extras - mirrors.aliyun.com
+failovermethod=priority
+baseurl=http://mirrors.aliyun.com/centos/$releasever/extras/$basearch/
+        http://mirrors.aliyuncs.com/centos/$releasever/extras/$basearch/
+        http://mirrors.cloud.aliyuncs.com/centos/$releasever/extras/$basearch/
+gpgcheck=1
+gpgkey=http://mirrors.aliyun.com/centos/RPM-GPG-KEY-CentOS-7
+```
+
+#### 更新yum
+
+```
+yum update
+```
+
+#### 配置docker rpm包, 使用aliyun源 
+
+
+```
+/etc/yum.repos.d/docker-ce.repo
+
+[docker-ce-stable]
+name=Docker CE Stable - $basearch
+baseurl=https://download.docker.com/linux/centos/7/$basearch/stable
+enabled=1
+gpgcheck=1
+gpgkey=https://download.docker.com/linux/centos/gpg
+
+```
+
+```
+yum install -y docker-ce
+```
+会安装以下包: 
+
+* containerd.io-1.2.6-3.3.el7.x86_64.rpm
+* container-selinux-2.99-1.el7_6.noarch.rpm
+* docker-ce-19.03.2.el7.x86_64.rpm
+* docker-ce-cli-19.03.2.el7.x86_64.rpm
+
+
+####  配置k8s rpm包, 使用aliyun源 
+
+```
+/etc/yum.repos.d/kubernetes.repo
+
+[kubernetes]
+name=Kubernetes
+baseurl=https://mirrors.aliyun.com/kubernetes/yum/repos/kubernetes-el7-x86_64
+enabled=1
+gpgcheck=1
+repo_gpgcheck=1
+gpgkey=https://mirrors.aliyun.com/kubernetes/yum/doc/yum-key.gpg https://mirrors.aliyun.com/kubernetes/yum/doc/rpm-package-key.gpg
+```
+
+```
+yum install -y kubeadm kubectl kubelet
+```
+
+会安装以下包: 
+
+* cri-tools-1.13.0-0.x86_64.rpm    
+* kubeadm-1.15.3-0.x86_64.rpm    
+* kubectl-1.15.3-0.x86_64.rpm
+* kubelet-1.15.3-0.x86_64.rpm
+* kubernetes-cni-0.7.5-0.x86_64.rpm 
+
+### 检查安装版本 
+
+```
+kubeadm version
+
+kubeadm version: &version.Info{Major:"1", Minor:"15", GitVersion:"v1.15.3", GitCommit:"2d3c76f9091b6bec110a5e63777c332469e0cba2", GitTreeState:"clean", BuildDate:"2019-08-19T11:11:18Z", GoVersion:"go1.12.9", Compiler:"gc", Platform:"linux/amd64"}
+```
+
+### 检查所需镜像
+
+```
+kubeadm config images list
+
+k8s.gcr.io/kube-apiserver:v1.15.3
+k8s.gcr.io/kube-controller-manager:v1.15.3
+k8s.gcr.io/kube-scheduler:v1.15.3
+k8s.gcr.io/kube-proxy:v1.15.3
+k8s.gcr.io/pause:3.1
+k8s.gcr.io/etcd:3.3.10
+k8s.gcr.io/coredns:1.3.1
+```
+
+### 部署k8s集群
+
+```
+kubeadm init --pod-network-cidr=10.244.0.0/16 --kubernetes-version v1.15.3
+```
+
+注意需要指定 --pod-network-cidr, 这里之前踩过一个坑, 如果没有指定系统不会默认给出这个配置, 通过下列语句可以查到是否配置了pod-network-cidr信息: 
+
+```
+kubectl get nodes -o yaml | grep CIDR
+或者
+kubectl cluster-info dump | grep cluster-cidr
+```
+
+### 执行成功后按系统提示配置
+
+```
+mkdir -p $HOME/.kube
+sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
+export KUBECONFIG=~/.kube/config
+```
+
+### 配置集群网络 
+
+这里我们使用flannel
+
+```
+kubectl apply -f https://raw.githubusercontent.com/coreos/flannel/master/Documentation/kube-flannel.yml
+```
+
+### 查看各pod状态是否正常 
+
+```
+kubectl get pods -n kube-system
+
+NAME                                            READY   STATUS    RESTARTS   AGE
+coredns-5c98db65d4-k8k7c                        1/1     Running   0          23h
+coredns-5c98db65d4-z8bt5                        1/1     Running   0          23h
+etcd-localhost.localdomain                      1/1     Running   0          23h
+kube-apiserver-localhost.localdomain            1/1     Running   0          23h
+kube-controller-manager-localhost.localdomain   1/1     Running   0          23h
+kube-flannel-ds-amd64-qd9mk                     1/1     Running   0          23h
+kube-proxy-hmfbm                                1/1     Running   0          23h
+kube-scheduler-localhost.localdomain            1/1     Running   0          23h
+```
+
+到这里master节点就算装好了, 接下来我们添加两个node上去 
+
+```
+[root@localhost ~]# kubectl get nodes
+NAME                    STATUS   ROLES    AGE   VERSION
+localhost.localdomain   Ready    master   8d    v1.15.3
+```
+
+### 前提配置 
+
+* master ip: 192.168.1.136
+* node1 ip: 192.168.1.137
+* node2 ip: 192.168.1.138
+
+node1, node2上需要安装相对应版本的kubeadm, kubelet, docker。 并且要执行关闭selinux以及关闭swap等操作 
+
+### 修改 hostname 与 /etc/hosts
+
+```
+echo node1 > /etc/hostname
+
+# /etc/hosts中的localhost.localdomain 替换为node1
+127.0.0.1   localhost node1 localhost4 localhost4.localdomain4
+```
+
+### 关闭node上的kubelet
+
+如果自己启动了kubelet要关掉
+
+```
+systemctl stop kubelet
+```
+
+### 复制master cni配置文件到node
+
+我们之前配置了 flannel 网络, 这里要给node加同样的网络配置, 否则会报错 
+
+```
+cni config uninitialized
+
+# node上创建目录
+mkdir  -p  /etc/cni/net.d
+
+# master scp 配置文件到node
+scp /etc/cni/net.d/10-flannel.conflist 192.168.1.137:/etc/cni/net.d
+scp /etc/cni/net.d/10-flannel.conflist 192.168.1.138:/etc/cni/net.d
+```
+
+### kubeadm join 加入集群
+
+```
+# node上执行
+kubeadm join --token 4pf1ur.2f2o8himqm1q472f  --discovery-token-unsafe-skip-ca-verification 192.168.1.136:6443
+```
+
+这里的token会在master kubeadm init的时候给出来, 如果当时没记到的话, 可以再去查询 
+
+```
+kubeadm token list
+
+TOKEN                     TTL         EXPIRES                     USAGES                   DESCRIPTION                                                EXTRA GROUPS
+me4o54.3zwsiunykn3tnof2   <invalid>   2019-09-11T19:13:01+08:00   authentication,signing   The default bootstrap token generated by 'kubeadm init'.   system:bootstrappers:kubeadm:default-node-token
+```
+
+如果token已经过期 invalid(有效期为24h), 需要重新生成
+
+```
+kubeadm token create
+
+TOKEN                     TTL         EXPIRES                     USAGES                   DESCRIPTION                                                EXTRA GROUPS
+4pf1ur.2f2o8himqm1q472f   23h         2019-09-20T16:18:28+08:00   authentication,signing   <none>                                                  system:bootstrappers:kubeadm:default-node-token
+me4o54.3zwsiunykn3tnof2   <invalid>   2019-09-11T19:13:01+08:00   authentication,signing   The default bootstrap token generated by 'kubeadm init'.   system:bootstrappers:kubeadm:default-node-token
+```
+
+
+### 检查添加后状态 
+
+```
+[root@localhost ~]# kubectl get nodes
+NAME                    STATUS   ROLES    AGE   VERSION
+localhost.localdomain   Ready    master   8d    v1.15.3
+node1                   Ready    <none>   14m   v1.15.3
+node2                   Ready    <none>   10m   v1.15.3
+```
+
+### 检查pod状态 
+
+```
+[root@localhost ~]# kubectl get pod -n kube-system
+NAME                                            READY   STATUS              RESTARTS   AGE
+coredns-5c98db65d4-k8k7c                        1/1     Running             0          8d
+coredns-5c98db65d4-z8bt5                        1/1     Running             0          8d
+etcd-localhost.localdomain                      1/1     Running             0          8d
+kube-apiserver-localhost.localdomain            1/1     Running             0          8d
+kube-controller-manager-localhost.localdomain   1/1     Running             0          8d
+kube-flannel-ds-amd64-2brk8                     0/1     Init:0/1            0          49m
+kube-flannel-ds-amd64-qd9mk                     1/1     Running             0          8d
+kube-flannel-ds-amd64-tvpv7                     0/1     Init:0/1            0          45m
+kube-proxy-hmfbm                                1/1     Running             0          8d
+kube-proxy-n8bxn                                0/1     ContainerCreating   0          49m
+kube-proxy-zsjlk                                0/1     ContainerCreating   0          45m
+kube-scheduler-localhost.localdomain            1/1     Running             0          8d
+```
+
+查看几个没跑起来pod, 发现是镜像问题
+
+```
+[root@localhost ~]# kubectl describe pod kube-proxy-zsjlk -n kube-system
+
+Events:
+  Type     Reason                  Age                 From               Message
+  ----     ------                  ----                ----               -------
+  Normal   Scheduled               46m                 default-scheduler  Successfully assigned kube-system/kube-proxy-zsjlk to node2
+  Warning  FailedCreatePodSandBox  59s (x56 over 46m)  kubelet, node2     Failed create pod sandbox: rpc error: code = Unknown desc = failed pulling image "k8s.gcr.io/pause:3.1": Error response from daemon: Get https://k8s.gcr.io/v2/: net/http: request canceled while waiting for connection (Client.Timeout exceeded while awaiting headers)
+```
+
+node pull 镜像时超时了, 应该是被墙了。最近梯子不稳, 代理也不好用, 可以把master上面之前pull下来的镜像打包过来, 然后重启pod就可以了 
+
+
+### trouble shooting
+
+#### 原因 
+
+master, node全部down机, 跑起来之后node节点 显示not ready, describe node显示: 
+
+```
+NodeStatusUnknown   Kubelet stopped posting node status
+```
+
+kubelet报错, 可以去node机器上查看日志: 
+
+```
+journalctl -u kubelet
+
+9月 24 12:05:20 node2 kubelet[25059]: E0924 12:05:20.541958   25059 kubelet.go:2248] node "node2" not found
+9月 24 12:05:20 node2 kubelet[25059]: E0924 12:05:20.603050   25059 reflector.go:125] k8s.io/client-go/informers/factory.go:133: Failed to list *v1beta1.CSIDriver: Get https://192.168.1.136:6443/apis/storage.k8s.io/v1beta1/csidrivers?limit=500&resourceVersion=0: dial tcp 192.168.1.136:6443: connect: no route to host
+
+```
+
+检查各机器 swapoff, firewalld状态, 找到问题是master防火墙又开启了, 关闭并加配置
+
+```
+systemctl stop firewalld
+systemctl disable firewalld
+```
+
