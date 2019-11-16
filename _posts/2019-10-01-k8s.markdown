@@ -181,6 +181,15 @@ sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
 export KUBECONFIG=~/.kube/config
 ```
 
+### 设置master参与工作负载
+
+使用kubeadm初始化的集群, 将master节点做了taint, 默认情况下Pod不会被调度到master上, 自己在家搭建的时候, 可以去掉这个taint: 
+
+```
+kubectl taint nodes --all node-role.kubernetes.io/master-
+```
+
+
 ### 配置集群网络 
 
 这里我们使用flannel
