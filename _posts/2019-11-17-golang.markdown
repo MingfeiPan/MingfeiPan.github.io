@@ -1,0 +1,260 @@
+---
+layout: post
+title: golang slice 的一些笔记
+category: golang
+tag : golang
+---
+
+slice 可能已经被人解析烂了, 但是我还是想做一份笔记。直接入题, 我们知道golang的slice是引用类型, 结构如下: 
+
+```
+type slice struct {
+	array unsafe.Pointer
+	len   int
+	cap   int
+}
+```
+
+这里array是一个指针, 指向一块连续内存。多个slice也许会共享一个底层array。修改某个slice时其实是在修改底层数组, 有可能会影响到其他slice: 
+
+```
+func main() {
+	s1 := []int{1, 2, 3} //s1 has len 3, cap 3
+	s2 := s1[:0] // s2 has len 0, cap 3
+
+	s2 = append(s2, 4)
+
+	fmt.Println(s1)
+	fmt.Println(s2)
+}
+
+output:
+[4 2 3]
+[4]
+
+```
+
+s1, s2共享了底层数组, 所以s2的变动影响到了s1。这也导致了一些情况下我们需要通过复制来抵消这种影响: 
+
+```
+ret = append(append([]int{}, cur...), val) // copy whole slice of cur
+
+or use copy:
+func copy(dst, src []Type) int
+```
+
+这个是常规的技巧, 也没什么tricky的。比较有趣的问题出现在slice 扩容的时候。我们知道slice是动态扩容的, 代码: 
+
+```
+newcap := old.cap
+doublecap := newcap + newcap
+if cap > doublecap {
+	newcap = cap
+} else {
+	if old.len < 1024 {
+		newcap = doublecap
+	} else {
+		// Check 0 < newcap to detect overflow
+		// and prevent an infinite loop.
+		for 0 < newcap && newcap < cap {
+			newcap += newcap / 4
+		}
+		// Set newcap to the requested cap when
+		// the newcap calculation overflowed.
+		if newcap <= 0 {
+			newcap = cap
+		}
+	}
+}
+```
+
+规则即为小于1024时每次乘二, 大于1024时每次加1/4。 我们直接拿小于1024的情况举例子好了, 看下面这段代码:
+
+```
+func main() {
+	s := make([]string, 2)
+	modify(s)
+	fmt.Println(s)
+}
+
+func modify(s []string) {
+	s = append(s, "a", "a")
+	s[0] = "b"
+	s[1] = "b"
+	fmt.Println(s)
+}
+
+output:
+[b b a a]
+[ ]
+```
+
+在我们有意构造的输入的情况下, 输出跟想象中不太一样了。 modify没有如期修改s的值, s仍旧是空的, 因为append操作导致了一次扩容, 原slice与参数复制的slice指向了不同的array, 实际上对modify中的slice的修改已经与原slice无关。 
+
+首先我们要明确一件事情, 我们这个modify方法, 就是想修改slice的内容, 我们不会构造一个特别的用法去证明一个什么东西, 而是这个用法是会有需求的。那这里想要修改要怎么处理呢? 换成指针试试:
+
+```
+func main() {
+	s := make([]string, 2)
+	modify(&s)
+	fmt.Println(s)
+}
+
+func modify(s *[]string) {
+	(*s) = append((*s), "a", "a")
+	(*s)[0] = "b"
+	(*s)[1] = "b"
+	fmt.Println(*s)
+}
+
+output:
+[b b a a]
+[b b a a]
+```
+
+结果符合预期, 事实上对slice指针的使用是非常有必要, 很多库都有类似用法:
+
+比如[kubernetes/apimachinery/pkg/runtime/conversion.go](https://github.com/kubernetes/apimachinery/blob/master/pkg/runtime/conversion.go) 中:
+
+```
+func Convert_Slice_string_To_string(in *[]string, out *string, s conversion.Scope) error
+```
+
+[golang heap](https://golang.org/pkg/container/heap/) 中:
+
+```
+func (pq *PriorityQueue) Pop() interface{};
+```
+
+比较一下直接传slice与传slice指针的区别:
+
+#### 参数传slice
+golang的值复制原则, 当直接使用slice做参数时, 是直接做了复制, 相当于两个slice, 只不过共用一个底层slice, 所以某些情况对参数中slice的操作有可能影响到原slice, 比如修改了底层array: 
+
+```
+func main() {
+	s := []string{"a", "a"}
+	modify(s)
+	fmt.Println(s)
+}
+
+func modify(s []string) {
+	s = append(s, "a")
+	s[0] = "b"
+	s[1] = "b"
+	fmt.Println(s)
+}
+
+
+output:
+[b b a]
+[a a]
+```
+
+有时则不会, 比如只是对参数中slice做append, 也不做任何返回: 
+
+```
+func main() {
+	s := []string{"a", "a"}
+	modify(s)
+	fmt.Println(s)
+}
+
+func modify(s []string) {
+	s = append(s, "a", "a")
+	fmt.Println(s)
+}
+
+output:
+[a a a a]
+[a a]
+```
+
+有时做了append操作与修改操作, 还会因为append出现的位置不同会导致完全不同的结果: 
+
+先扩容:
+
+```
+func main() {
+	s := []string{"a", "a"}
+	modify(s)
+	fmt.Println(s)
+}
+
+func modify(s []string) {
+	s = append(s, "a")
+	s[0] = "b"
+	s[1] = "b"
+	fmt.Println(s)
+}
+
+output:
+[b b a]
+[a a]
+```
+
+先修改:
+
+```
+func main() {
+	s := []string{"a", "a"}
+	modify(s)
+	fmt.Println(s)
+}
+
+func modify(s []string) {
+	s[0] = "b"
+	s[1] = "b"
+	s = append(s, "a")
+	fmt.Println(s)
+}
+
+output:
+[b b a]
+[b b]
+```
+
+先扩容但是事先给出的slice capacity不同: 
+
+```
+func main() {
+	s := make([]string, 2, 3)
+	modify(s)
+	fmt.Println(s)
+}
+
+func modify(s []string) {
+	s = append(s, "a")
+	s[0] = "b"
+	s[1] = "b"
+	fmt.Println(s)
+}
+
+output:
+[b b a]
+[b b]
+```
+
+这些细微的差距需要在使用时特别小心, 尤其是append时需要考虑是否出现了扩容: 
+
+* 未扩容会影响原slice
+* 扩容不会影响原slice
+
+#### 参数传slice指针
+
+使用指针时, 我们修改的是同一个slice, 这里复制的只有指针, slice就只有那么一个, 所以任何修改都会得到反馈, 也侧面保证了一致性。总结下来就是: 
+
+`当你想要修改slice中的内容并且要使caller感知时, 请使用指针(通过返回值也可以做到, 使用指针往往是不考虑给返回值的情况)`
+
+### 结论 
+
+* 使用slice append时, 考虑扩容带来的影响
+* 想要修改原slice, 最好通过slice指针或者返回值
+
+
+
+
+
+
+
+
