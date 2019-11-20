@@ -114,13 +114,13 @@ output:
 
 结果符合预期, 事实上对slice指针的使用是非常有必要, 很多库都有类似用法:
 
-比如[kubernetes/apimachinery/pkg/runtime/conversion.go](https://github.com/kubernetes/apimachinery/blob/master/pkg/runtime/conversion.go) 中:
+比如 [kubernetes/apimachinery/pkg/runtime/conversion.go](https://github.com/kubernetes/apimachinery/blob/master/pkg/runtime/conversion.go) 中:
 
 ```
 func Convert_Slice_string_To_string(in *[]string, out *string, s conversion.Scope) error
 ```
 
-[golang heap](https://golang.org/pkg/container/heap/) 中:
+又或者 [golang heap](https://golang.org/pkg/container/heap/) 中:
 
 ```
 func (pq *PriorityQueue) Pop() interface{};
