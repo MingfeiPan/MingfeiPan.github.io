@@ -1,0 +1,274 @@
+---
+layout: post
+title: golang named return value
+category: golang
+tag : golang
+---
+
+### named return value
+
+看到一篇文章介绍golang的 named return value, 这里做一些笔记。说实话之前很少用到命名返回, 文章里指出合理利用命名返回是可以节省空间的
+
+先看一段代码: 
+
+```
+package main 
+
+type objectInfo struct {
+	arg1 int64
+	arg2 uint64
+	arg3 string
+	arg4 []int
+}
+func NoNamedReturnParams(i int) (objectInfo) {
+
+	if i == 1 {
+		// Do one thing
+		return objectInfo{}
+	}
+
+	if i == 2 {
+		// Do another thing
+		return objectInfo{}
+	}
+
+	if i == 3 {
+		// Do one more thing still
+		return objectInfo{}
+	}
+
+	// Normal return
+	return objectInfo{}
+}
+```
+
+我们构造一段代码, 根据i的取值, 返回一些空结构体, 当然实际代码没人这么写, 这里只是例子, 查看汇编码: 
+
+```
+GOOS=linux GOARCH=386 go tool compile -S return_value.go
+
+"".NoNamedReturnParams STEXT size=119 args=0x28 locals=0x0
+	0x0000 00000 (return_value.go:9)	TEXT	"".NoNamedReturnParams(SB), ABIInternal, $0-40
+	0x0000 00000 (return_value.go:9)	MOVL	TLS, CX
+	0x0007 00007 (return_value.go:9)	MOVL	(CX)(TLS*2), CX
+	0x000d 00013 (return_value.go:9)	CMPL	SP, 8(CX)
+	0x0010 00016 (return_value.go:9)	JLS	112
+	0x0012 00018 (return_value.go:9)	FUNCDATA	$0, gclocals·ad7ecaf0573424ba94b1b38ed3df91e7(SB)
+	0x0012 00018 (return_value.go:9)	FUNCDATA	$1, gclocals·69c1753bd5f81501d95132d08af04464(SB)
+	0x0012 00018 (return_value.go:9)	FUNCDATA	$2, gclocals·a3d0edcba257f1c7014297f333248c66(SB)
+	0x0012 00018 (return_value.go:9)	PCDATA	$0, $1
+	0x0012 00018 (return_value.go:9)	PCDATA	$1, $0
+	0x0012 00018 (return_value.go:9)	LEAL	"".~r1+8(SP), DI
+	0x0016 00022 (return_value.go:9)	XORL	AX, AX
+	0x0018 00024 (return_value.go:9)	PCDATA	$0, $0
+	0x0018 00024 (return_value.go:9)	DUFFZERO	$119
+	0x001d 00029 (return_value.go:11)	MOVL	"".i+4(SP), CX
+	0x0021 00033 (return_value.go:11)	CMPL	CX, $1
+	0x0024 00036 (return_value.go:11)	JEQ	96
+	0x0026 00038 (return_value.go:16)	CMPL	CX, $2
+	0x0029 00041 (return_value.go:16)	JEQ	80
+	0x002b 00043 (return_value.go:21)	CMPL	CX, $3
+	0x002e 00046 (return_value.go:21)	JNE	64
+	0x0030 00048 (return_value.go:23)	PCDATA	$0, $1
+	0x0030 00048 (return_value.go:23)	PCDATA	$1, $1
+	0x0030 00048 (return_value.go:23)	LEAL	"".~r1+8(SP), DI
+	0x0034 00052 (return_value.go:23)	PCDATA	$0, $2
+	0x0034 00052 (return_value.go:23)	LEAL	""..stmp_2(SB), SI
+	0x003a 00058 (return_value.go:23)	PCDATA	$0, $0
+	0x003a 00058 (return_value.go:23)	DUFFCOPY	$1190
+	0x003f 00063 (return_value.go:23)	RET
+	0x0040 00064 (return_value.go:27)	PCDATA	$0, $1
+	0x0040 00064 (return_value.go:27)	LEAL	"".~r1+8(SP), DI
+	0x0044 00068 (return_value.go:27)	PCDATA	$0, $2
+	0x0044 00068 (return_value.go:27)	LEAL	""..stmp_3(SB), SI
+	0x004a 00074 (return_value.go:27)	PCDATA	$0, $0
+	0x004a 00074 (return_value.go:27)	DUFFCOPY	$1190
+	0x004f 00079 (return_value.go:27)	RET
+	0x0050 00080 (return_value.go:18)	PCDATA	$0, $1
+	0x0050 00080 (return_value.go:18)	LEAL	"".~r1+8(SP), DI
+	0x0054 00084 (return_value.go:18)	PCDATA	$0, $2
+	0x0054 00084 (return_value.go:18)	LEAL	""..stmp_1(SB), SI
+	0x005a 00090 (return_value.go:18)	PCDATA	$0, $0
+	0x005a 00090 (return_value.go:18)	DUFFCOPY	$1190
+	0x005f 00095 (return_value.go:18)	RET
+	0x0060 00096 (return_value.go:13)	PCDATA	$0, $1
+	0x0060 00096 (return_value.go:13)	LEAL	"".~r1+8(SP), DI
+	0x0064 00100 (return_value.go:13)	PCDATA	$0, $2
+	0x0064 00100 (return_value.go:13)	LEAL	""..stmp_0(SB), SI
+	0x006a 00106 (return_value.go:13)	PCDATA	$0, $0
+	0x006a 00106 (return_value.go:13)	DUFFCOPY	$1190
+	0x006f 00111 (return_value.go:13)	RET
+	0x0070 00112 (return_value.go:13)	NOP
+	0x0070 00112 (return_value.go:9)	PCDATA	$1, $-1
+	0x0070 00112 (return_value.go:9)	PCDATA	$0, $-1
+	0x0070 00112 (return_value.go:9)	CALL	runtime.morestack_noctxt(SB)
+	0x0075 00117 (return_value.go:9)	JMP	0
+
+```
+
+`注意size`
+
+再看另一段代码, 相同功能, 使用named return value: 
+
+```
+package main 
+
+type objectInfo struct {
+	arg1 int64
+	arg2 uint64
+	arg3 string
+	arg4 []int
+}
+func NoNamedReturnParams(i int) (oi objectInfo) {
+
+	if i == 1 {
+		// Do one thing
+		return oi
+	}
+
+	if i == 2 {
+		// Do another thing
+		return oi
+	}
+
+	if i == 3 {
+		// Do one more thing still
+		return oi
+	}
+
+	// Normal return
+	return oi
+}
+```
+
+汇编码: 
+
+```
+GOOS=linux GOARCH=386 go tool compile -S return_value_less.go
+
+"".NamedReturnParams STEXT size=59 args=0x28 locals=0x0
+	0x0000 00000 (return_value_less.go:9)	TEXT	"".NamedReturnParams(SB), ABIInternal, $0-40
+	0x0000 00000 (return_value_less.go:9)	MOVL	TLS, CX
+	0x0007 00007 (return_value_less.go:9)	MOVL	(CX)(TLS*2), CX
+	0x000d 00013 (return_value_less.go:9)	CMPL	SP, 8(CX)
+	0x0010 00016 (return_value_less.go:9)	JLS	52
+	0x0012 00018 (return_value_less.go:9)	FUNCDATA	$0, gclocals·ad7ecaf0573424ba94b1b38ed3df91e7(SB)
+	0x0012 00018 (return_value_less.go:9)	FUNCDATA	$1, gclocals·69c1753bd5f81501d95132d08af04464(SB)
+	0x0012 00018 (return_value_less.go:9)	FUNCDATA	$2, gclocals·39825eea4be6e41a70480a53a624f97b(SB)
+	0x0012 00018 (return_value_less.go:9)	PCDATA	$0, $1
+	0x0012 00018 (return_value_less.go:9)	PCDATA	$1, $1
+	0x0012 00018 (return_value_less.go:9)	LEAL	"".oi+8(SP), DI
+	0x0016 00022 (return_value_less.go:9)	XORL	AX, AX
+	0x0018 00024 (return_value_less.go:9)	PCDATA	$0, $0
+	0x0018 00024 (return_value_less.go:9)	DUFFZERO	$119
+	0x001d 00029 (return_value_less.go:11)	MOVL	"".i+4(SP), CX
+	0x0021 00033 (return_value_less.go:11)	CMPL	CX, $1
+	0x0024 00036 (return_value_less.go:11)	JEQ	51
+	0x0026 00038 (return_value_less.go:16)	CMPL	CX, $2
+	0x0029 00041 (return_value_less.go:16)	JEQ	50
+	0x002b 00043 (return_value_less.go:21)	CMPL	CX, $3
+	0x002e 00046 (return_value_less.go:21)	JNE	49
+	0x0030 00048 (return_value_less.go:23)	PCDATA	$0, $-2
+	0x0030 00048 (return_value_less.go:23)	PCDATA	$1, $-2
+	0x0030 00048 (return_value_less.go:23)	RET
+	0x0031 00049 (return_value_less.go:27)	RET
+	0x0032 00050 (return_value_less.go:18)	RET
+	0x0033 00051 (return_value_less.go:13)	RET
+	0x0034 00052 (return_value_less.go:13)	NOP
+	0x0034 00052 (return_value_less.go:9)	PCDATA	$1, $-1
+	0x0034 00052 (return_value_less.go:9)	PCDATA	$0, $-1
+	0x0034 00052 (return_value_less.go:9)	CALL	runtime.morestack_noctxt(SB)
+	0x0039 00057 (return_value_less.go:9)	JMP	0
+```
+
+两段代码区别还挺大的, 肉眼看上去移除了一些 *DUFFCOPY* 的调用, 然后同样的代码功能, 只是加了named return value, size从119降低到了59, 明显可以看到使用一个命名返回值, 可以避免掉重复的return value复制。
+
+事实上这里 bradfitz 提了一个相关 [issue](https://github.com/golang/go/issues/20859), 表示named return value确实是可以带来实际好处的, 而不仅仅是官方文档中提到的: 
+
+`naming result parameters should only be for godoc cleanliness`
+
+并提议说, 可以考虑把这块优化加到编译器里去做, 毕竟这里只是在重复的做duffcopy:
+
+```
+0x0034 00052 (return_value.go:23)	LEAL	""..stmp_2(SB), SI
+0x003a 00058 (return_value.go:23)	PCDATA	$0, $0
+0x003a 00058 (return_value.go:23)	DUFFCOPY
+```
+generates了四次stmp, 优化的话只生成一次, 然后一直复用就可以了, 其实这里压根就是个空结构体, 是个zero value, 编译器完全可以察觉到这一点, 然后就不需要生成这个值了。
+
+issue里rob pike出来发了一句, 还挺逗的: 
+
+```
+I like named return values. I wish I had permission to use them.
+```
+
+吐槽了半天 “style tyrants” 不让他用 named return value。说心里话, 带有named return value的 godoc 确实看起来怪怪的。当然我们这里不关注 named value return 对于 godoc 的影响。 主要是想看优化的结果。 
+
+然而这个issue17年6月提出来之后, 就一直也没被处理, 在计划列表里一拖再拖, 已经被拖到backlog里了, 估计是没人管了。 反正我上面用go 1.13 编译出来的结果是还没优化呢。
+
+### duff device
+
+再说两句题外话, 其实刚开始看到的duffcopy的时候, 我还挺纳闷, copy明白, duff是个啥呢, 后来查了下这个duff就是达夫, 之前有在关于php的一边文章中了解过 [达夫设备](https://mingfeipan.github.io/php/2017/12/13/php/), 这里golang runtime里的duffcopy也是用这技巧来做优化的。 
+
+简单的说duffcopy是一种把循环写开的优化, 因为当我们确定要循环某个次数的时候, 每次的条件检查就没有什么必要了, 反而是一种性能浪费。 比如说我要循环1000次, 那我没必要每次都去查看 count < 1000。 [duff device](https://en.wikipedia.org/wiki/Duff%27s_device) 通过switch fall through就可以完美实现。 
+
+可以看下golang runtime的里duffcopy是怎么做的, golang源码里提供了多种架构的实现 386, amd64, arm什么的都有, 我们就只看386下的代码: 
+
+```
+mkduff.go 
+
+func copy386(w io.Writer) {
+	// SI: ptr to source memory
+	// DI: ptr to destination memory
+	// SI and DI are updated as a side effect.
+	//
+	// This is equivalent to a sequence of MOVSL but
+	// for some reason MOVSL is really slow.
+	fmt.Fprintln(w, "TEXT runtime·duffcopy(SB), NOSPLIT, $0-0")
+	for i := 0; i < 128; i++ {
+		fmt.Fprintln(w, "\tMOVL\t(SI), CX")
+		fmt.Fprintln(w, "\tADDL\t$4, SI")
+		fmt.Fprintln(w, "\tMOVL\tCX, (DI)")
+		fmt.Fprintln(w, "\tADDL\t$4, DI")
+		fmt.Fprintln(w)
+	}
+	fmt.Fprintln(w, "\tRET")
+}
+```
+
+顾名思义, makeduff这里就是代码生成器了, 再找到duff_386.s, 可以看到生成的汇编码: 
+
+```
+TEXT runtime·duffcopy(SB), NOSPLIT, $0-0
+...
+```
+很长我就不全贴了, 源码里都有, 其实就是上面copy386执行的结果。与duffcopy一起出现的, 还有一个duffzero的函数, 其实他们的功能就是在做memset跟memcpy。我们在64位架构amd64下生成的代码看一眼: 
+
+```
+duff_amd64.s
+
+// X0: zero
+// DI: ptr to memory to be zeroed
+// DI is updated as a side effect.
+TEXT runtime·duffzero(SB), NOSPLIT, $0-0
+	MOVUPS	X0,(DI)
+	MOVUPS	X0,16(DI)
+	MOVUPS	X0,32(DI)
+	MOVUPS	X0,48(DI)
+	LEAQ	64(DI),DI
+...
+
+// SI: ptr to source memory
+// DI: ptr to destination memory
+// SI and DI are updated as a side effect.
+TEXT runtime·duffcopy(SB), NOSPLIT, $0-0
+	MOVUPS	(SI), X0
+	ADDQ	$16, SI
+	MOVUPS	X0, (DI)
+	ADDQ	$16, DI
+...
+```
+
+每一条指令赋值/拷贝 16字节, 每四条组成一组, 然后重复多个组, 这样就利用duff device避免了在循环里使用条件判断, 从而达到优化的目的。
+
+
