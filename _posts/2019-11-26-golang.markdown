@@ -7,7 +7,7 @@ tag : golang
 
 ### named return value
 
-看到一篇文章介绍golang的 named return value, 这里做一些笔记。说实话之前很少用到命名返回, 文章里指出合理利用命名返回是可以节省空间的
+看到一篇文章介绍golang的 named return value, 说实话之前很少用到命名返回, 也没有太关注过, 这里补一些笔记。
 
 先看一段代码: 
 
@@ -181,7 +181,7 @@ GOOS=linux GOARCH=386 go tool compile -S return_value_less.go
 	0x0039 00057 (return_value_less.go:9)	JMP	0
 ```
 
-两段代码区别还挺大的, 肉眼看上去移除了一些 *DUFFCOPY* 的调用, 然后同样的代码功能, 只是加了named return value, size从119降低到了59, 明显可以看到使用一个命名返回值, 可以避免掉重复的return value复制。
+两段代码区别还挺大的, 肉眼看上去第二段少了一些 *DUFFCOPY* 的调用, 然后同样的代码功能, 第二段加了named return value, size从119降低到了59, 明显可以看到使用一个命名返回值, 可以避免掉重复的return value复制。
 
 事实上这里 bradfitz 提了一个相关 [issue](https://github.com/golang/go/issues/20859), 表示named return value确实是可以带来实际好处的, 而不仅仅是官方文档中提到的: 
 
