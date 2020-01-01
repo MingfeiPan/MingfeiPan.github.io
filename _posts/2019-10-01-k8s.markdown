@@ -367,11 +367,18 @@ systemctl disable firewalld
 
 ```
 apt-get install selinux selinux-utils 
+# 关闭selinux
 setenforce 0
 sed -i 's/^SELINUX=enforcing$/SELINUX=permissive/' /etc/selinux/config
+
+# 调整 ip 参数
 sysctl -w net.ipv4.ip_forward=1
+
+# 关闭swap
 swapoff -a
 iptables -P FORWARD ACCEPT
+
+# 关闭firewall
 systemctl stop ufw
 
 # 安装docker-ce
