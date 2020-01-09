@@ -360,3 +360,39 @@ systemctl stop firewalld
 systemctl disable firewalld
 ```
 
+### 后记 
+
+最近在家里重配了一套k8s, 基于ubuntu 18.04, 流程上有些区别, 这里也记录一下: 
+
+
+```
+apt-get install selinux selinux-utils 
+# 关闭selinux
+setenforce 0
+sed -i 's/^SELINUX=enforcing$/SELINUX=permissive/' /etc/selinux/config
+
+# 调整 ip 参数
+sysctl -w net.ipv4.ip_forward=1
+
+# 关闭swap
+swapoff -a
+iptables -P FORWARD ACCEPT
+
+# 关闭firewall
+systemctl stop ufw
+
+# 安装docker-ce
+
+sudo apt-get install     apt-transport-https     ca-certificates     curl     gnupg-agent     software-properties-common
+sudo apt-get install     apt-transport-https     ca-certificates     curl     gnupg-agent     software-properties-common
+
+# 更新k8s源 
+vim sources.list
+# 添加aliyun的k8s源
+deb https://mirrors.aliyun.com/kubernetes/apt kubernetes-xenial main
+
+# 安装 kubelet kubeadm kubectl
+# 挑选合适的版本
+apt-cache madison kubeadm
+apt-get install -y kubelet=1.15.3-00 kubeadm=1.15.3-00 kubectl=1.15.3-00
+```
