@@ -63,14 +63,14 @@ try {
 }
 ```
 
-如果挨个向上抛出也会很难看, 想象一下代码throws挂了几十种Exception, 这更是无法接受了。当然Exception多了之后可以考虑一定程度的封装, 搞出几个基类这样可以比挂一串exception稍微好看一些。更直接的就直接抛一个笼统的Exception或者自己定义一个BizException来处理。这种方案下, CE已经彻底失去了意义, 那还不如使用Runtime Exception, 调用端连显式处理都不需要。  
+如果挨个向上抛出也会很难看, 想象一下代码throws挂了几十种Exception。当然Exception多了之后可以考虑一定程度的封装, 搞出几个基类这样可以比挂一串Exception稍微好看一些。更直接的就抛一个笼统的Exception或者自己定义一个BizException来处理。这种方案下, CE已经彻底失去了意义, 那还不如使用Runtime Exception, 调用端连显式处理都不需要。  
 
-所以大部分人的观点下, CE是一个意义不大的设计, 想法很好, 实际中很难用的到。连java自己内部库对异常的描述也是很笼统, 而不是按照CE的要求细分Exception。尤其是java8之后, 为了与lambda processing兼容, 很多人都更愿意使用Runtime Exception来封装自己的异常, 这样代码也会更干净好看。
+所以大部分人的观点下, CE是一个意义不大的设计, 想法很好, 实际中很难用的舒服。尤其是java8之后, 为了与lambda processing兼容, 很多人都更愿意使用Runtime Exception来封装自己的异常, 这样代码也会更干净好看。
 
 
-yinwang 早先写过[一篇文章](http://www.yinwang.org/blog-cn/2017/05/23/kotlin)夸奖 CE, 然后表示Kotlin 去掉了CE是一种落后的做法。yinwang的观点我是赞同的, 使用CE可以借助编译器来检查你的代码, 迫使代码变得规范有序。但是最近一段写java的经历来看, 大部分库里或多或少的CE, 我更愿意直接处理掉活着转化成Runtime Exception抛出, 而不是让他无限传播。
+yinwang 早先写过[一篇文章](http://www.yinwang.org/blog-cn/2017/05/23/kotlin)夸奖 CE, 表示Kotlin 去掉了CE是一种落后的做法。yinwang的观点我是赞同的, 使用CE可以借助编译器来检查你的代码, 迫使代码变得规范有序。但是最近一段写java的经历来看, 大部分库里或多或少的CE, 我更愿意直接处理掉或者转化成Runtime Exception抛出,   至少caller就不需要再去显式处理了。
 
-当然第三方库里使用CE, 我是很支持的, 尤其是那些文档差的库, 用CE至少能快速看到一场报错的种类, 而不是通过程序去猜。 但当自己写代码的时候, 我们也不太想知道, 也不会去处理所有的异常, 这种场景下unchecked exception是最佳选择。
+当然第三方库里使用CE, 我是很支持的, 尤其是那些文档差的库, 用CE至少能快速看到异常报错的种类, 不用把程序跑起来去猜。
 
 
 
