@@ -1,0 +1,80 @@
+---
+layout: post
+title: java checked exception
+category: java
+tag : java
+---
+
+最近需要调一些yarn相关的代码, 所以又重新捡起java学了学。之前用过的语言python, php都是支持异常处理语法的, 而且我觉得在设计上都有参考java。这里想记录的是java 中的CE, checked exception。
+
+java的异常处理模块从 *Throwable* 开始, *Throwable* 派生自 *Object*:
+
+```
+Class Throwable
+All Implemented Interfaces:
+Serializable
+Direct Known Subclasses:
+Error, Exception
+```
+
+*Throwable* 的两个子类, *Error*, *Exception*。*Error* 表示严重错误, 程序无法解决此类问题, 只能报错:
+
+* OutOfMemoryError
+* NoClassDefFoundError
+* StackOverflowError
+
+*Exception* 一部分属于程序运行时会出现的, 可以被捕获处理。比如: 
+
+* FileNotFoundException
+* SocketException
+
+这些异常可以catch掉, 然后通过程序逻辑来做出反馈。
+
+还有一部分是程序逻辑没写对, 在调试阶段就应该改掉的, 或者通过测试覆盖掉的: 
+
+* NullPointerException
+* IndexOutOfBoundsException
+
+这一类异常属于RuntimeException, 编译器不会检查RuntimeException。
+
+除了这些分类之外, java还额外有一个checked exception的概念: 也就是exception中的非 RuntimeException, 都属于checked exception。 Error 以及 RuntimeException都是unchecked exception。
+
+`java要求必须捕获checked exception, 也就是说当遇到CE时, 必须显式去try/catch处理或者要在函数处抛出交给调用者处理。`
+
+理想中CE是一个很好的设计, 每一个存在的异常都被严谨的处理, 要么自己catch掉, 要么throws给调用者。整个程序对异常是完全掌控的。 但是实际开发时, 如果系统复杂一些, 调用链上涉及到socket io, file io。 一次正常的调用, 有可能需要处理几十个不正常的情况。这种情况下会变得丑陋起来, 要么依次处理掉这几十个异常, 要么就要挨个向上抛出。
+
+如果依次处理, 代码里仅仅处理异常的逻辑都有一大片。而且在业务代码里, 有些异常可能就只是记一条log, 或者就什么都不处理。但是因为这是一个CE, 所以必须显式处理, 每遇到一个就会写一段类似这种代码: 
+
+```
+try {
+  // code
+} catch (SomeNotImportantButCheckedException e) {
+  // do nothing or set log
+}
+```
+
+也可能这里连具体的exception的类型都懒得标了: 
+
+```
+try {
+  // code
+} catch (Exception e) {
+  // do nothing or set log
+}
+```
+
+如果挨个向上抛出也会很难看, 想象一下代码throws挂了几十种Exception, 这更是无法接受了。当然Exception多了之后可以考虑一定程度的封装, 搞出几个基类这样可以比挂一串exception稍微好看一些。更直接的就直接抛一个笼统的Exception或者自己定义一个BizException来处理。这种方案下, CE已经彻底失去了意义, 那还不如使用Runtime Exception, 调用端连显式处理都不需要。  
+
+所以大部分人的观点下, CE是一个意义不大的设计, 想法很好, 实际中很难用的到。连java自己内部库对异常的描述也是很笼统, 而不是按照CE的要求细分Exception。尤其是java8之后, 为了与lambda processing兼容, 很多人都更愿意使用Runtime Exception来封装自己的异常, 这样代码也会更干净好看。
+
+
+yinwang 早先写过[一篇文章](http://www.yinwang.org/blog-cn/2017/05/23/kotlin)夸奖 CE, 然后表示Kotlin 去掉了CE是一种落后的做法。yinwang的观点我是赞同的, 使用CE可以借助编译器来检查你的代码, 迫使代码变得规范有序。但是最近一段写java的经历来看, 大部分库里或多或少的CE, 我更愿意直接处理掉活着转化成Runtime Exception抛出, 而不是让他无限传播。
+
+当然第三方库里使用CE, 我是很支持的, 尤其是那些文档差的库, 用CE至少能快速看到一场报错的种类, 而不是通过程序去猜。 但当自己写代码的时候, 我们也不太想知道, 也不会去处理所有的异常, 这种场景下unchecked exception是最佳选择。
+
+
+
+
+
+
+
