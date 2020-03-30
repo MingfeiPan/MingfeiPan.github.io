@@ -1,0 +1,83 @@
+---
+layout: post
+title: slf4j log 配置文件的一些笔记
+category: java
+tag : java
+---
+
+写了一段时间java, 觉得还是挺好用的。昨天配了一下springboot的日志输出, 遇到一个jar包冲突的问题, 这里顺手记录一下。
+
+先看下slf4j log的配置文件
+
+```
+// log4j.properites
+
+#log4j config
+log4j.rootLogger=info, stdout, file
+
+# Console 输出
+log4j.appender.stdout=org.apache.log4j.ConsoleAppender
+log4j.appender.stdout.layout=org.apache.log4j.PatternLayout
+log4j.appender.stdout.Target=System.out
+log4j.appender.file.Threshold=INFO
+log4j.appender.stdout.layout.ConversionPattern=%-d{yyyy-MM-dd HH:mm:ss,SSS} [%c]-[%p] %m%n
+
+# File 输出
+# log4j.logger.info=info
+log4j.appender.file=org.apache.log4j.DailyRollingFileAppender 
+log4j.appender.file.File=/var/log/wbl/wbl_log.log
+log4j.appender.file.Append=true
+log4j.appender.file.Threshold=INFO
+log4j.appender.file.MaxFileSize=500KB
+log4j.appender.file.MaxBackupIndex=10
+log4j.appender.file.layout=org.apache.log4j.PatternLayout
+log4j.appender.file.layout.ConversionPattern=%d{yyyy-MM-dd HH:mm:ss,SSS} [%t] [%c] [%p] - %m%n
+```
+
+配置一目了然, 不多解释了。主要是有一个jar包冲突的问题想记录。slf4j是一个被普遍使用的lib, 所以在项目里被引用了两次, 导致输出到file时失效。
+
+运行时报错:
+
+```
+SLF4J: Class path contains multiple SLF4J bindings.
+SLF4J: Found binding in [jar:file:/Users/mingfei3/Works/wbl/management_platform/backstage/target/wblplatform-0.0.1-SNAPSHOT.jar!/BOOT-INF/lib/logback-classic-1.2.3.jar!/org/slf4j/impl/StaticLoggerBinder.class]
+SLF4J: Found binding in [jar:file:/Users/mingfei3/Works/wbl/management_platform/backstage/target/wblplatform-0.0.1-SNAPSHOT.jar!/BOOT-INF/lib/slf4j-log4j12-1.7.30.jar!/org/slf4j/impl/StaticLoggerBinder.class]
+SLF4J: See http://www.slf4j.org/codes.html#multiple_bindings for an explanation.
+SLF4J: Actual binding is of type [ch.qos.logback.classic.util.ContextSelectorStaticBinder]
+```
+
+`SLF4J: Class path contains multiple SLF4J bindings.` 
+
+查看mvn tree:
+
+```
+...
+ 13 [INFO] |  |  +- org.springframework.boot:spring-boot-starter-logging:jar:2.2.4.RELEASE:compile
+ 14 [INFO] |  |  |  +- ch.qos.logback:logback-classic:jar:1.2.3:compile
+ 15 [INFO] |  |  |  |  \- ch.qos.logback:logback-core:jar:1.2.3:compile
+ 16 [INFO] |  |  |  +- org.apache.logging.log4j:log4j-to-slf4j:jar:2.12.1:compile
+ 17 [INFO] |  |  |  |  \- org.apache.logging.log4j:log4j-api:jar:2.12.1:compile
+ 18 [INFO] |  |  |  \- org.slf4j:jul-to-slf4j:jar:1.7.30:compile
+ ...
+134 [INFO] |  +- org.slf4j:slf4j-api:jar:1.7.30:compile
+135 [INFO] |  +- org.slf4j:slf4j-log4j12:jar:1.7.30:compile
+... 
+```
+
+确实冲突了, 利用 exclusions 标签去掉一个slf4j依赖, 这也是处理依赖冲突的标准做法:
+
+```
+<dependency>
+	<groupId>org.springframework.boot</groupId>
+	<artifactId>spring-boot-starter-web</artifactId>
+	<exclusions>
+		<exclusion>
+			<groupId>ch.qos.logback</groupId>
+			<artifactId>logback-classic</artifactId>
+		</exclusion>
+	</exclusions>
+</dependency>
+```
+
+想说的是, 对比go跟python的库, java每一个库的内容给我感觉就是丰富到冗余了。而且不只是库, java的一切都是很多很大。比如报错时候的异常栈, mvn dependency tree(mvn生成indi tree的时候机器都会发烫), springboot文件组织都是这样。用起来很是不习惯(不过springboot的注解用着真的很爽)。
+
