@@ -1,0 +1,47 @@
+---
+layout: post
+title: spring RestTemplate的一些笔记 
+category: java
+tag : java
+---
+
+记录一下RestTemplate 的用法, RestTemplate 是一个完善的http request lib, 基本上curl的任务都可以做到。最近的项目用到了所以记录一下。 
+
+```
+@Component
+public class HttpClient<T> {
+
+    @Autowired
+    RestTemplate restTemplate;
+
+    @Bean
+    public RestTemplate restTemplate() {
+        return new RestTemplate();
+    }
+
+    public String request(String url, HttpMethod method) {
+        ResponseEntity<String> response = restTemplate.exchange(url, method, null, String.class);
+        return response.getBody();
+    }
+    
+    public String request(String url, HttpMethod method, Map<String, T> params) {
+        ResponseEntity<String> response = restTemplate.exchange(url, method, null, String.class, params);
+        return response.getBody();
+    } 
+
+    public String request(String url, HttpMethod method, Map<String, T> params, MultiValueMap<String, String> headers) {
+        HttpEntity<Map<String, T>> requestEntity = new HttpEntity<Map<String, T>>(params, headers);
+        ResponseEntity<String> response = restTemplate.exchange(url, method, requestEntity, String.class);
+        return response.getBody();
+    }    
+}
+```
+
+利用 exchange 方法重载, 可以兼容到三种常用的curl场景:
+
+* simple get
+* simple get with URI params
+* simple post
+
+实际上封装的3个 request都可以使用不同的httpMethod, 所以灵活度更高。比直接用 RestTemplate提供的各种 getForObject, postForObject更便捷。
+
