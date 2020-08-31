@@ -1,0 +1,38 @@
+---
+layout: post
+title:  rand seed的一个小坑
+category: go
+tag : go
+--- 
+
+高并发下, rand seed会有性能问题, 今天线上遇到, 记录一下。
+
+原因是 Seed内部调用时会加锁: 
+
+```
+func (r *Rand) Seed(seed int64) {
+	if lk, ok := r.src.(*lockedSource); ok {
+		lk.seedPos(seed, &r.readPos)
+		return
+	}
+
+	r.src.Seed(seed)
+	r.readPos = 0
+}
+
+...
+
+func (r *lockedSource) Seed(seed int64) {
+	r.lk.Lock()
+	r.src.Seed(seed)
+	r.lk.Unlock()
+}
+```
+
+应该放到init或者利用sync.Once 全局执行一次即可
+
+```
+func init() {
+	rand.Seed(time.Now().UnixNano())  
+}
+```
