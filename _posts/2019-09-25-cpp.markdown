@@ -1,0 +1,55 @@
+---
+layout: post
+title: c++ mktime 性能影响
+category: cpp
+tag : cpp
+---
+
+
+### mktime 性能影响
+
+简单说就是 mktime 在高频调用下会影响性能, 原因是 mktime 会针对时区每次进行校对:
+
+* 通过调用__tzset()对时区进行设置
+	*	若TZ环境变量为NULL,尝试调用__tzfile\_read读取文件中的时区信息
+	* 只需要首次设置，若改变或为NULL重新设置
+* 调用__mktime\_internal进行时间转换
+	* 检查系统的tm\_isdst(是否为夏令时)和传入的struct tm的tm\_isdst，若两个不一致(isdst\_differ), 则进行矫正tm\_isdst
+
+这两步操作会在高频调用下影响性能, [具体分析](https://langzi989.github.io/2019/01/02/mktime%E6%80%A7%E8%83%BD%E5%88%86%E6%9E%90/)
+
+### 修改方案
+
+大致两个选择, 设置对应的 tm_isdst参数, 与TZ环境变量。或者自己写一个固定时区数值的 mktime方法。
+
+```
+int64_t convert() {
+  std::string stime = "2054-03-01 15:12:12";
+  tm ptime;
+  if (NULL == strptime(stime.c_str(), "%Y-%m-%d %H:%M:%S", &ptime)) {
+    return -1;
+  }
+  ptime.tm_isdst = 1;
+  setenv("TZ", "Asia/Shanghai", 0);
+  return mktime(&ptime);
+}
+```
+
+or
+
+```
+int64_t convert() {
+  std::string stime = "2054-03-01 15:12:12";
+  tm ptime;
+  if (NULL == strptime(stime.c_str(), "%Y-%m-%d %H:%M:%S", &ptime)) {
+    return -1;
+  }
+  int64_t tyears, tdays, leaps, utc_hrs;
+  int64_t utcdiff = -8; // 东八区固定时区
+  tyears = ptime.tm_year - 70; // tm_year 起点为 1900年
+  leaps = (tyears + 1) / 4; // 计算闰年, 2100年之后需要修改
+  tdays = tyears * 365 + leaps + ptime.tm_yday;
+  utc_hrs = ptime.tm_hour + utcdiff;
+  return tdays * 86400 + utc_hrs * 3600 + ptime.tm_min * 60 + ptime.tm_sec;
+}
+```
