@@ -1,0 +1,267 @@
+---
+layout: post
+title: kubeflow 安装指南
+category: kubernetes
+tag : kubernetes
+---
+
+### kubeflow 部署
+
+在一个现有 k8s 集群中安装kubeflow, 记录一下大致流程与踩坑
+
+#### 准备 StorageClass
+
+Kubeflow 运行需要准备一个 StorageClass 以及对应 dynamic volume provisioner, 这里本地起一个 nfs 来提供, 注意检查本地 nfs-server 服务。
+
+```
+nfsdeploy.yaml
+
+kind: Deployment 
+apiVersion: extensions/v1beta1 
+metadata: 
+  name: nfs-client-provisioner 
+spec: 
+  replicas: 1 
+  strategy: 
+    type: Recreate 
+  template: 
+    metadata: 
+      labels: 
+        app: nfs-client-provisioner 
+    spec: 
+      serviceAccount: default 
+      containers: 
+        - name: nfs-client-provisioner 
+          image: registry.cn-hangzhou.aliyuncs.com/open-ali/nfs-client-provisioner 
+          volumeMounts: 
+            - name: nfs-client-root 
+              mountPath: /persistentvolumes 
+          env: 
+            - name: PROVISIONER_NAME 
+              value: test-kubeflow/nfs      
+            - name: NFS_SERVER 
+              value: 127.0.0.1 
+            - name: NFS_PATH 
+              value: /data0/k8s/nfspath 
+      volumes:                                                                         
+        - name: nfs-client-root 
+          nfs: 
+            server: 127.0.0.1 
+            path: /data0/k8s/nfspath  
+
+```
+
+之后再创建一个 StorageClass
+
+```
+scdeploy.yaml
+
+kind: StorageClass 
+apiVersion: storage.k8s.io/v1 
+metadata: 
+  name: nfs 
+provisioner: test-kubeflow/nfs 
+parameters: 
+  archiveOnDelete: "false" 
+
+```
+
+#### 下载&解压 对应版本的kubeflow 这里选择v1.0.2
+
+按照官方步骤:
+
+```
+export PATH=$PATH:/data0/k8s	
+export KF_NAME=test_kubeflow
+export BASE_DIR=/data0/k8s
+export KF_DIR=${BASE_DIR}/${KF_NAME}
+export CONFIG_URI="https://raw.githubusercontent.com/kubeflow/manifests/v1.0-branch/kfdef/kfctl_k8s_istio.v1.0.2.yaml"
+```
+
+#### 执行安装
+
+```
+mkdir -p ${KF_DIR}
+cd ${KF_DIR}
+kfctl apply -V -f ${CONFIG_URI}
+```
+
+这一步需要大概 50个 image, 建议提前手动下载好并替换tag, 记得修改 imagePullPolicy 为 IfNotPresent
+
+利用 port-forward 暴露UI服务端口
+
+```
+nohup kubectl port-forward -n istio-system svc/istio-ingressgateway 8088:80 --pod-running-timeout=720h --address=0.0.0.0 &
+```
+
+### 坑点 
+
+#### nfs 对应 sa/ rolebinding
+
+nfs 最好提供对应的 serviceAccount 以及 rolebinding, 否则安装步骤会报错
+
+```
+nfssa.yaml
+
+apiVersion: v1 
+kind: ServiceAccount 
+metadata: 
+  name: nfs-client-provisioner 
+  
+clusterrole.yaml 
+
+kind: ClusterRole 
+apiVersion: rbac.authorization.k8s.io/v1 
+metadata: 
+  name: nfs-provisioner-runner 
+rules: 
+  - apiGroups: [""] 
+    resources: ["persistentvolumes"] 
+    verbs: ["get", "list", "watch", "create", "delete"] 
+  - apiGroups: [""] 
+    resources: ["persistentvolumeclaims"] 
+    verbs: ["get", "list", "watch", "update"] 
+  - apiGroups: ["storage.k8s.io"] 
+    resources: ["storageclasses"] 
+    verbs: ["get", "list", "watch"] 
+  - apiGroups: [""] 
+    resources: ["events"] 
+    verbs: ["watch", "create", "update", "patch"] 
+  - apiGroups: [""] 
+    resources: ["services", "endpoints"] 
+    verbs: ["get"] 
+  - apiGroups: ["extensions"] 
+    resources: ["podsecuritypolicies"] 
+    resourceNames: ["nfs-provisioner"] 
+    verbs: ["use"] 
+    
+clusterrolebinding.yaml
+
+kind: ClusterRoleBinding 
+apiVersion: rbac.authorization.k8s.io/v1 
+metadata: 
+  name: run-nfs-provisioner 
+subjects: 
+  - kind: ServiceAccount 
+    name: nfs-client-provisioner 
+    namespace: default 
+roleRef: 
+  kind: ClusterRole 
+  name: nfs-provisioner-runner 
+  apiGroup: rbac.authorization.k8s.io 
+```
+
+#### 启动 rpcbind.service
+
+影响 nfs server
+
+```
+sudo  systemctl enable   rpcbind.service
+sudo  systemctl start    rpcbind.service 
+```
+
+#### 手动创建各类数据库服务的 pvc
+
+pvc 无绑定时, 容器会crash掉
+
+包括:
+
+```
+pv.yaml
+
+apiVersion: v1 
+kind: PersistentVolume 
+metadata: 
+name: nfs 
+labels: 
+  pv: nfs 
+spec: 
+storageClassName: nfs
+
+katib-mysql-pvc.yaml
+
+apiVersion: v1 
+kind: PersistentVolumeClaim 
+metadata: 
+  finalizers: 
+    - kubernetes.io/pvc-protection 
+  name: katib-mysql 
+  namespace: kubeflow 
+spec: 
+  storageClassName: nfs 
+  accessModes: 
+    - ReadWriteOnce 
+  resources: 
+    requests: 
+      storage: 5Gi 
+      
+metadata-mysql-pvc.yaml
+
+apiVersion: v1 
+kind: PersistentVolumeClaim 
+metadata: 
+  finalizers: 
+    - kubernetes.io/pvc-protection 
+  name: metadata-mysql   
+  namespace: kubeflow 
+spec: 
+  storageClassName: nfs 
+  accessModes: 
+    - ReadWriteOnce 
+  resources: 
+    requests: 
+      storage: 5Gi 
+      
+
+minio-pv-claim.yaml
+
+apiVersion: v1 
+kind: PersistentVolumeClaim 
+metadata: 
+  finalizers: 
+    - kubernetes.io/pvc-protection 
+  name: minio-pv-claim 
+  namespace: kubeflow 
+spec: 
+  storageClassName: nfs 
+  accessModes: 
+    - ReadWriteOnce 
+  resources: 
+    requests: 
+      storage: 5Gi
+      
+
+mysql-pv-claim.yaml
+
+apiVersion: v1 
+kind: PersistentVolumeClaim 
+metadata: 
+  finalizers: 
+    - kubernetes.io/pvc-protection 
+  name: mysql-pv-claim 
+  namespace: kubeflow 
+spec: 
+  storageClassName: nfs 
+  accessModes: 
+    - ReadWriteOnce 
+  resources: 
+    requests: 
+      storage: 5Gi 
+```
+
+#### mnist example 缺少 storageClass
+
+官网给出了 pv, 以及pvc 但是缺少对应 sc, 会报错 :Error "no persistent volumes available for this claim and no storage class is set"
+
+补充一个对应 storageClass
+
+```
+tfsc.yaml
+
+kind: StorageClass 
+apiVersion: storage.k8s.io/v1 
+metadata: 
+  name: standard 
+provisioner: kubernetes.io/no-provisioner 
+volumeBindingMode: WaitForFirstConsumer 
+```
