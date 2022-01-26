@@ -1,0 +1,418 @@
+---
+layout: post
+title:  阻塞
+category: linux
+tag : linux
+--- 
+
+## 阻塞
+
+阻塞是谈论计算机操作系统时常常提到的概念。阻塞作为理解其他知识的 base, 有必要深入分析一把。
+
+这里我们以 socket io recv data 为例, 看看阻塞的细节原理。kernel 代码版本为 2.6
+
+
+```
+int main() {
+	int fd = socket(AF_INET, SOCK_STREAM, 0);
+	connect(fd, ...)
+	recv(fd, ...)
+}
+```
+
+recv 会执行 recvfrom 系统调用, 这里会从用户态转到内核态。
+
+### revfrom 流程
+
+recvfrom 通过用户传入的接收空间构造 msghdr, 并且调用sock\_recvmsg, 该函数调用 socket 操作的 recvmsg 函数 sock->ops->recvmsg, ipv4 对应的是inet\_recvmsg, 该函数调用传输层的 sk->sk\_prot->recvmsg 来接收数据, 如tcp则调用tcp_recvmsg, 接收完成之后记录地址结构长度信息。
+
+![](/Users/mingfei3/Works/MingfeiPan.github.io/img/in-post/recvfrom.jpeg)
+
+第四步访问 sock 对象的接收队列, 如果接受队列中还没有数据到达, 那么就会进入第五步, 把当前进程**阻塞**掉。
+
+recvfrom 实现:
+
+```
+// net/socket.c
+
+int __sys_recvfrom(int fd, void __user *ubuf, size_t size, unsigned int flags,
+		   struct sockaddr __user *addr, int __user *addr_len)
+{
+	struct socket *sock;
+	struct iovec iov;
+	struct msghdr msg;
+	struct sockaddr_storage address;
+	int err, err2;
+	int fput_needed;
+	
+	/* 构造msghdr */
+	err = import_single_range(READ, ubuf, size, &iov, &msg.msg_iter);
+	if (unlikely(err))
+		return err;
+		
+	/* 查找消息控制块 */
+	sock = sockfd_lookup_light(fd, &err, &fput_needed);
+	if (!sock)
+		goto out;
+
+	msg.msg_control = NULL;
+	msg.msg_controllen = 0;
+	/* Save some cycles and don't copy the address if not needed */
+	/* 地址结构信息 */
+	msg.msg_name = addr ? (struct sockaddr *)&address : NULL;
+	/* We assume all kernel code knows the size of sockaddr_storage */
+	msg.msg_namelen = 0;
+	msg.msg_iocb = NULL;
+	msg.msg_flags = 0;
+	/* 非阻塞标记 */
+	if (sock->file->f_flags & O_NONBLOCK)
+		flags |= MSG_DONTWAIT;
+		
+	/* 接收消息 */
+	err = sock_recvmsg(sock, &msg, flags);
+
+	/* 拷贝地址到用户空间 */
+	if (err >= 0 && addr != NULL) {
+		err2 = move_addr_to_user(&address,
+					 msg.msg_namelen, addr, addr_len);
+		if (err2 < 0)
+			err = err2;
+	}
+
+	fput_light(sock->file, fput_needed);
+out:
+	return err;
+}
+```
+
+
+inet_recvmsg 实现:
+
+```
+// net/ipv4/af_inet.c
+
+int inet_recvmsg(struct socket *sock, struct msghdr *msg, size_t size,
+		 int flags)
+{
+	struct sock *sk = sock->sk;
+	int addr_len = 0;
+	int err;
+
+	if (likely(!(flags & MSG_ERRQUEUE)))
+		sock_rps_record_flow(sk);
+
+	err = INDIRECT_CALL_2(sk->sk_prot->recvmsg, tcp_recvmsg, udp_recvmsg,
+			      sk, msg, size, flags & MSG_DONTWAIT,
+			      flags & ~MSG_DONTWAIT, &addr_len);
+	if (err >= 0)
+		msg->msg_namelen = addr_len;
+	return err;
+}
+```
+
+tcp_recvmsg 实现: 
+
+```
+// net/ipv4/tcp.c
+
+int tcp_recvmsg(struct sock *sk, struct msghdr *msg, size_t len, int nonblock,
+		int flags, int *addr_len)
+{
+	int cmsg_flags = 0, ret, inq;
+	struct scm_timestamping_internal tss;
+
+	if (unlikely(flags & MSG_ERRQUEUE))
+		return inet_recv_error(sk, msg, len, addr_len);
+
+	/* 阻塞等待有可读数据 */
+	if (sk_can_busy_loop(sk) &&
+	    skb_queue_empty_lockless(&sk->sk_receive_queue) &&
+	    sk->sk_state == TCP_ESTABLISHED)
+		sk_busy_loop(sk, nonblock);
+
+	lock_sock(sk);
+	ret = tcp_recvmsg_locked(sk, msg, len, nonblock, flags, &tss,
+				 &cmsg_flags);
+	release_sock(sk);
+	sk_defer_free_flush(sk);
+
+	if (cmsg_flags && ret >= 0) {
+		if (cmsg_flags & TCP_CMSG_TS)
+			tcp_recv_timestamp(msg, sk, &tss);
+		if (cmsg_flags & TCP_CMSG_INQ) {
+			inq = tcp_inq_hint(sk);
+			put_cmsg(msg, SOL_TCP, TCP_CM_INQ, sizeof(inq), &inq);
+		}
+	}
+	return ret;
+}
+
+```
+
+上述第4步到第6步的调用流程, 即发生**阻塞**的调用链: 
+
+tcp\_recvmsg->sk_busy\_loop->napi\_busy\_loop->cond\_resched
+
+最终调用到 cond\_resched, 主动放权, 等待下一次调度。
+
+napi\_busy\_loop 实现:
+
+```
+// net/core/dev.c
+
+void napi_busy_loop(unsigned int napi_id,
+		    bool (*loop_end)(void *, unsigned long),
+		    void *loop_end_arg, bool prefer_busy_poll, u16 budget)
+{
+	unsigned long start_time = loop_end ? busy_loop_current_time() : 0;
+	int (*napi_poll)(struct napi_struct *napi, int budget);
+	void *have_poll_lock = NULL;
+	struct napi_struct *napi;
+
+restart:
+	napi_poll = NULL;
+
+	rcu_read_lock();
+
+	napi = napi_by_id(napi_id);
+	if (!napi)
+		goto out;
+
+	preempt_disable();
+	for (;;) {
+		int work = 0;
+
+		local_bh_disable();
+		if (!napi_poll) {
+			unsigned long val = READ_ONCE(napi->state);
+
+			/* If multiple threads are competing for this napi,
+			 * we avoid dirtying napi->state as much as we can.
+			 */
+			if (val & (NAPIF_STATE_DISABLE | NAPIF_STATE_SCHED |
+				   NAPIF_STATE_IN_BUSY_POLL)) {
+				if (prefer_busy_poll)
+					set_bit(NAPI_STATE_PREFER_BUSY_POLL, &napi->state);
+				goto count;
+			}
+			if (cmpxchg(&napi->state, val,
+				    val | NAPIF_STATE_IN_BUSY_POLL |
+					  NAPIF_STATE_SCHED) != val) {
+				if (prefer_busy_poll)
+					set_bit(NAPI_STATE_PREFER_BUSY_POLL, &napi->state);
+				goto count;
+			}
+			have_poll_lock = netpoll_poll_lock(napi);
+			napi_poll = napi->poll;
+		}
+		work = napi_poll(napi, budget);
+		trace_napi_poll(napi, work, budget);
+		gro_normal_list(napi);
+count:
+		if (work > 0)
+			__NET_ADD_STATS(dev_net(napi->dev),
+					LINUX_MIB_BUSYPOLLRXPACKETS, work);
+		local_bh_enable();
+
+		if (!loop_end || loop_end(loop_end_arg, start_time))
+			break;
+
+		if (unlikely(need_resched())) {
+			if (napi_poll)
+				busy_poll_stop(napi, have_poll_lock, prefer_busy_poll, budget);
+			preempt_enable();
+			rcu_read_unlock();
+			cond_resched();
+			if (loop_end(loop_end_arg, start_time))
+				return;
+			goto restart;
+		}
+		cpu_relax();
+	}
+	if (napi_poll)
+		busy_poll_stop(napi, have_poll_lock, prefer_busy_poll, budget);
+	preempt_enable();
+out:
+	rcu_read_unlock();
+}
+```
+
+当读发生时, 也有类似逻辑被执行:
+
+tcp\_recvmsg\_locked->sk\_wait\_data->sk\_sleep-> prepare\_to\_wait
+
+skb\_queue\_walk 访问 sock 对象的接收队列:
+
+```
+// net/ipv4/tcp.c
+...
+skb_queue_walk(&sk->sk_receive_queue, skb) {
+	last = skb;
+...
+```
+
+如果没有收到数据, 或者数据不够多, 则调用 sk\_wait\_data 把当前进程阻塞掉。
+
+```
+// net/ipv4/tcp.c
+...
+} else {
+	tcp_cleanup_rbuf(sk, copied);
+	sk_defer_free_flush(sk);
+	sk_wait_data(sk, &timeo, last);
+}
+...
+```
+
+sk\_sleep:
+
+```
+// include/net/sock.h
+static inline wait_queue_head_t *sk_sleep(struct sock *sk)
+{
+ BUILD_BUG_ON(offsetof(struct socket_wq, wait) != 0);
+ return &rcu_dereference_raw(sk->sk_wq)->wait;
+}
+```
+
+prepare\_to\_wait: 
+
+```
+// kernel/wait.c
+void
+prepare_to_wait(wait_queue_head_t *q, wait_queue_t *wait, int state)
+{
+ unsigned long flags;
+
+ wait->flags &= ~WQ_FLAG_EXCLUSIVE;
+ spin_lock_irqsave(&q->lock, flags);
+ if (list_empty(&wait->task_list))
+  __add_wait_queue(q, wait);
+ set_current_state(state);
+ spin_unlock_irqrestore(&q->lock, flags);
+}
+```
+
+到这一步阻塞完成了上半段操作, 也就是进程修改了自己的状态, 主动交出了 cpu的执行权。
+
+当有数据到达的时候, 内核会将数据包放到该 socket的接收队列中, 然后扫描对应 socket 的等待队列, 如果发现有进程阻塞在这个 socket 上面, 则唤醒这个进程。
+
+__wake\_up\_common 实现:
+
+```
+// kernel/sched/wait.c
+
+/*
+ * The core wakeup function. Non-exclusive wakeups (nr_exclusive == 0) just
+ * wake everything up. If it's an exclusive wakeup (nr_exclusive == small +ve
+ * number) then we wake that number of exclusive tasks, and potentially all
+ * the non-exclusive tasks. Normally, exclusive tasks will be at the end of
+ * the list and any non-exclusive tasks will be woken first. A priority task
+ * may be at the head of the list, and can consume the event without any other
+ * tasks being woken.
+ *
+ * There are circumstances in which we can try to wake a task which has already
+ * started to run but is not in state TASK_RUNNING. try_to_wake_up() returns
+ * zero in this (rare) case, and we handle it by continuing to scan the queue.
+ */
+static int __wake_up_common(struct wait_queue_head *wq_head, unsigned int mode,
+			int nr_exclusive, int wake_flags, void *key,
+			wait_queue_entry_t *bookmark)
+{
+	wait_queue_entry_t *curr, *next;
+	int cnt = 0;
+
+	lockdep_assert_held(&wq_head->lock);
+
+	if (bookmark && (bookmark->flags & WQ_FLAG_BOOKMARK)) {
+		curr = list_next_entry(bookmark, entry);
+
+		list_del(&bookmark->entry);
+		bookmark->flags = 0;
+	} else
+		curr = list_first_entry(&wq_head->head, wait_queue_entry_t, entry);
+
+	if (&curr->entry == &wq_head->head)
+		return nr_exclusive;
+
+	list_for_each_entry_safe_from(curr, next, &wq_head->head, entry) {
+		unsigned flags = curr->flags;
+		int ret;
+
+		if (flags & WQ_FLAG_BOOKMARK)
+			continue;
+
+		ret = curr->func(curr, mode, wake_flags, key);
+		if (ret < 0)
+			break;
+		if (ret && (flags & WQ_FLAG_EXCLUSIVE) && !--nr_exclusive)
+			break;
+
+		if (bookmark && (++cnt > WAITQUEUE_WALK_BREAK_CNT) &&
+				(&next->entry != &wq_head->head)) {
+			bookmark->flags = WQ_FLAG_BOOKMARK;
+			list_add_tail(&bookmark->entry, &next->entry);
+			break;
+		}
+	}
+
+	return nr_exclusive;
+}
+```
+
+当然这里的唤醒, 只是把相应进程放到可运行队列里, 真正执行要等 cpu 再调度, 从唤醒到被调度的这段过程可以称之为**阻塞**的下半段。
+
+所以其实**阻塞**就是一次 放弃执行权到获得执行权的过程, 可以看出这种 blocking io在大量 socket io 的情况下会频繁触发阻塞, 将有大量线程上下文切换开销。
+
+###  阻塞非轮询
+
+网卡收到数据包时, 通过**硬中断**唤醒内核进程处理, 硬中断会触发软中断, 之后ksoftirqd 内核线程开始执行, 来从网卡上取包, 放到接收队列, 然后唤醒用户进程。
+
+`ksoftirqd是运行在Linux的进程, 专门处理系统的软中断`
+
+`硬中断: 内核和网络设备驱动是通过中断的方式来处理的。当设备上有数据到达的时候, 会给CPU的相关引脚上触发一个电压变化, 以通知CPU来处理数据`
+
+
+### epoll 中的阻塞
+
+当没有 IO 时间时, epoll 自身会阻塞当前进程(通过 epoll\_wait), 所以 epoll 本身是阻塞的, 但是通常他监听的 socket 是非阻塞的。
+
+并且实际使用中, epoll 模型往往用来处理 IO 密集型应用, 时刻保持在工作状态, 很少陷入阻塞。
+
+### epoll 是同步 IO
+
+是的, 因为 epoll_wait的执行流程注定了 epoll 是同步阻塞的。
+
+可以看一下 unp 所给出的 IO操作概念:
+
+* 1.等待数据准备好
+* 2.从内核到用户空间拷贝数据
+
+第二步就是同步与异步的区别:
+
+* 同步IO**拷贝数据**这一步仍然会导致请求进程阻塞, 直到IO操作完成。
+* 异步IO任何步骤都不导致请求进程阻塞。
+
+值得注意的是, epoll 采用 mmap 机制, 内核 socket buffer 与用户空间 buffer 共享内存, 已经省了 copy的花销。所以这一层阻塞其实并没有发生真实的读写, 但是阻塞确实是阻塞了。
+
+### 同步 异步 阻塞 非阻塞
+
+* 同步, 可以理解为在发出一个调用时, 在没有得到结果之前, 该调用就不返回, 一旦调用返回就可以得到返回值。即为调用者**主动等待**这个**调用**的结果。
+* 异步则是调用发出后直接返回, 不等待调用结果, 后续由被调用方通知调用方, 比如通过回调函数来处理。
+
+* 阻塞与非阻塞更关注程序等待调用结果(返回值)时的状态。
+* 阻塞指等待是当前线程会挂起, 让出执行权。
+* 而非阻塞是指不能立即得到结果之前, 该调用不会阻塞当前线程。
+
+这里需要强调一个概念:
+
+* **异步就是异步**, 异步不存在所谓阻塞非阻塞之说, 异步通过回调处理就绪的数据(执行回调的线程可能已经不是原线程), 必然是非阻塞的。
+* 同步才有阻塞非阻塞的说法: 
+	* 阻塞会让出执行权
+	* 非阻塞会继续执行下游代码, 但是需要有另一套机制来访问这个非阻塞IO的数据(比如轮询)
+	* epoll 自身是同步阻塞的, 但是 epoll 监听的 socket的集可以是非阻塞的。
+
+
+[参考](https://www.cnblogs.com/Anker/p/5965654.html)
+[参考more](怎样理解阻塞非阻塞与同步异步的区别？ - 卢毅luis的回答 - 知乎
+https://www.zhihu.com/question/19732473/answer/20851256)
