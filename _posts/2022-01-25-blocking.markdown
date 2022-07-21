@@ -26,7 +26,7 @@ recv 会执行 recvfrom 系统调用, 这里会从用户态转到内核态。
 
 recvfrom 通过用户传入的接收空间构造 msghdr, 并且调用sock\_recvmsg, 该函数调用 socket 操作的 recvmsg 函数 sock->ops->recvmsg, ipv4 对应的是inet\_recvmsg, 该函数调用传输层的 sk->sk\_prot->recvmsg 来接收数据, 如tcp则调用tcp_recvmsg, 接收完成之后记录地址结构长度信息。
 
-![](/Users/mingfei3/Works/MingfeiPan.github.io/img/in-post/recvfrom.jpeg)
+<img src="/img/in-post/recvfrom.jpg">
 
 第四步访问 sock 对象的接收队列, 如果接受队列中还没有数据到达, 那么就会进入第五步, 把当前进程**阻塞**掉。
 
